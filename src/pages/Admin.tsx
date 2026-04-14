@@ -18,19 +18,33 @@ export default function Admin() {
       }
       setUser(user);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .maybeSingle();
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .maybeSingle();
 
-      if (!profile?.is_admin) {
-        navigate('/dashboard');
-        return;
+        // Fallback: If user is the owner email, allow admin access
+        const isOwner = user.email === 'gibsonkobia@gmail.com';
+
+        if (profile?.is_admin || isOwner) {
+          setIsAdmin(true);
+          fetchSubmissions();
+        } else {
+          console.log('Not an admin, redirecting...');
+          navigate('/dashboard');
+        }
+      } catch (err) {
+        console.error('Error checking admin status:', err);
+        // Even if the table check fails, allow the owner email
+        if (user.email === 'gibsonkobia@gmail.com') {
+          setIsAdmin(true);
+          fetchSubmissions();
+        } else {
+          navigate('/dashboard');
+        }
       }
-
-      setIsAdmin(true);
-      fetchSubmissions();
     };
 
     checkAdmin();
