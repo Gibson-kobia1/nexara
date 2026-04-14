@@ -1,0 +1,6 @@
+{
+  "name": "Nexara Broker",
+  "description": "A unified control layer for digital financial platforms, allowing you to manage balances and route liquidity across exchanges and wallets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
