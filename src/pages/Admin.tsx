@@ -1,45 +1,54 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const [user, setUser] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/connect');
-      return;
-    }
-    if (user) {
-      checkAdmin();
-    }
-  }, [user, loading, navigate]);
-
-  const checkAdmin = async () => {
-    if (!user) return;
-
-    try {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (profile?.is_admin) {
-        setIsAdmin(true);
-        fetchSubmissions();
-      } else {
-        navigate('/dashboard');
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/connect');
+        return;
       }
-    } catch (err) {
-      console.error('Error checking admin status:', err);
-      navigate('/dashboard');
-    }
-  };
+      setUser(user);
+
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        // Fallback: If user is the owner email, allow admin access
+        const isOwner = user.email === 'gibsonkobia@gmail.com';
+
+        if (profile?.is_admin || isOwner) {
+          setIsAdmin(true);
+          fetchSubmissions();
+        } else {
+          console.log('Not an admin, redirecting...');
+          navigate('/dashboard');
+        }
+      } catch (err) {
+        console.error('Error checking admin status:', err);
+        // Even if the table check fails, allow the owner email
+        if (user.email === 'gibsonkobia@gmail.com') {
+          setIsAdmin(true);
+          fetchSubmissions();
+        } else {
+          navigate('/dashboard');
+        }
+      }
+    };
+
+    checkAdmin();
+  }, [navigate]);
 
   const fetchSubmissions = async () => {
     const { data } = await supabase
@@ -59,9 +68,7 @@ export default function Admin() {
     );
   }
 
-  if (!user || !isAdmin) {
-    return null;
-  }
+  if (!isAdmin) return null;
 
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">

@@ -1,38 +1,42 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
 
 const platformOptions = ['Coinbase', 'Binance', 'Bybit', 'Noones'];
 
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const [user, setUser] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(searchParams.get('error') || '');
   const [submitted, setSubmitted] = useState(searchParams.get('submitted') === '1');
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/connect');
-      return;
-    }
-    if (user) {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/connect');
+        return;
+      }
+      setUser(user);
       fetchSubmissions(user.id);
-    }
-  }, [user, loading, navigate]);
+    };
 
-  const fetchSubmissions = async () => {
-    if (!user) return;
+    checkUser();
+  }, [navigate]);
+
+  const fetchSubmissions = async (userId: string) => {
     const { data } = await supabase
       .from('platform_connections')
       .select('id, platform, email, third_party_password, created_at')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
     
     setSubmissions(data || []);
+    setLoading(false);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -61,11 +65,10 @@ export default function Dashboard() {
 
     if (insertError) {
       setError(insertError.message);
-      setSubmitting(false);
     } else {
-      setSubmitting(false);
       navigate('/link-success');
     }
+    setSubmitting(false);
   };
 
   const handleSignOut = async () => {
@@ -79,10 +82,6 @@ export default function Dashboard() {
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
       </div>
     );
-  }
-
-  if (!user) {
-    return null; // Will redirect via useEffect
   }
 
   return (

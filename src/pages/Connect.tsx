@@ -5,15 +5,14 @@ import { supabase } from '../lib/supabase';
 
 export default function Connect() {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials((current) => ({
@@ -22,13 +21,12 @@ export default function Connect() {
     }));
   };
 
-  const handleLogin = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const email = credentials.email.trim();
     const password = credentials.password;
 
     setErrorMessage('');
-    setSuccessMessage('');
 
     if (!email || !password) {
       setErrorMessage('Please enter both email and password.');
@@ -38,66 +36,31 @@ export default function Connect() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      if (isSignup) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (error) throw error;
+        setErrorMessage('Account created! Please check your email for verification.');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      console.debug('Supabase signInWithPassword result:', { data, error });
-
-      if (error) {
-        console.error('Supabase signInWithPassword error:', error);
-        setErrorMessage(error.message);
-        return;
+        if (error) {
+          if (error.message.includes('Failed to fetch')) {
+            setErrorMessage('Connection failed. Please check your Supabase configuration in environment variables.');
+          } else {
+            setErrorMessage(error.message);
+          }
+          return;
+        }
+        navigate('/dashboard');
       }
-
-      navigate('/dashboard');
     } catch (err: any) {
-      console.error('Unexpected sign in error:', err);
-      setErrorMessage(err?.message || 'An unexpected error occurred.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignup = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const email = credentials.email.trim();
-    const password = credentials.password;
-
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    if (!email || !password) {
-      setErrorMessage('Please enter both email and password.');
-      return;
-    }
-
-    if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters long.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      console.debug('Supabase signUp result:', { data, error });
-
-      if (error) {
-        console.error('Supabase signUp error:', error);
-        setErrorMessage(error.message);
-        return;
-      }
-
-      setSuccessMessage('Account created successfully! Please check your email to confirm your account.');
-    } catch (err: any) {
-      console.error('Unexpected sign up error:', err);
-      setErrorMessage(err?.message || 'An unexpected error occurred.');
+      setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
@@ -121,12 +84,16 @@ export default function Connect() {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
             <Zap className="text-white w-7 h-7" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-center">{isSignup ? 'Create Account' : 'Welcome back'}</h1>
-          <p className="text-slate-400 mt-2 text-center">{isSignup ? 'Create your account to get started' : 'Enter your credentials to access your account'}</p>
+          <h1 className="text-3xl font-bold tracking-tight text-center">
+            {isSignup ? 'Create Account' : 'Welcome back'}
+          </h1>
+          <p className="text-slate-400 mt-2 text-center">
+            {isSignup ? 'Create your account to get started' : 'Enter your credentials to access your account'}
+          </p>
         </div>
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-          <form onSubmit={isSignup ? handleSignup : handleLogin} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2 ml-1">
                 Email Address
@@ -174,15 +141,17 @@ export default function Connect() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-white/5 text-blue-500 focus:ring-offset-0 focus:ring-blue-500/50" />
-                <span className="text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
-              </label>
-              <button type="button" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
-                Forgot password?
-              </button>
-            </div>
+            {!isSignup && (
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-white/5 text-blue-500 focus:ring-offset-0 focus:ring-blue-500/50" />
+                  <span className="text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
+                </label>
+                <button type="button" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
+                  Forgot password?
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"
@@ -197,14 +166,8 @@ export default function Connect() {
             </button>
 
             {errorMessage && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm text-center">
+              <div className={`p-4 rounded-2xl text-sm text-center ${errorMessage.includes('created') ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
                 {errorMessage}
-              </div>
-            )}
-
-            {successMessage && (
-              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-green-400 text-sm text-center">
-                {successMessage}
               </div>
             )}
           </form>
@@ -212,7 +175,14 @@ export default function Connect() {
           <div className="mt-8 pt-8 border-t border-white/5 text-center">
             <p className="text-slate-400 text-sm">
               {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
-              <button type="button" onClick={() => setIsSignup(!isSignup)} className="text-blue-400 hover:text-blue-300 font-bold transition-colors">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setIsSignup(!isSignup);
+                  setErrorMessage('');
+                }}
+                className="text-blue-400 hover:text-blue-300 font-bold transition-colors"
+              >
                 {isSignup ? 'Sign In' : 'Create account'}
               </button>
             </p>
