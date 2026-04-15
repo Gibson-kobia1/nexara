@@ -3,6 +3,7 @@ import Landing from './pages/Landing';
 import Connect from './pages/Connect';
 import Dashboard from './pages/Dashboard';
 import Admin from './pages/Admin';
+import LinkSuccess from './pages/LinkSuccess';
 import CoinbaseConnect from './pages/connect/Coinbase';
 import NoonesConnect from './pages/connect/Noones';
 import BybitConnect from './pages/connect/Bybit';
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/connect/noones" element={<NoonesConnect />} />
           <Route path="/connect/bybit" element={<BybitConnect />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/link-success" element={<LinkSuccess />} />
           <Route path="/admin" element={<Admin />} />
         </Routes>
       </Router>

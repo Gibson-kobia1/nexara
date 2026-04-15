@@ -61,12 +61,11 @@ export default function Dashboard() {
 
     if (insertError) {
       setError(insertError.message);
+      setSubmitting(false);
     } else {
-      setSubmitted(true);
-      fetchSubmissions();
-      event.currentTarget.reset();
+      setSubmitting(false);
+      navigate('/link-success');
     }
-    setSubmitting(false);
   };
 
   const handleSignOut = async () => {
