@@ -35,7 +35,7 @@ export default function Connect() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -48,7 +48,14 @@ export default function Connect() {
         }
         return;
       }
-      navigate('/admin');
+      
+      // Wait for session to be established before navigating
+      if (data.session) {
+        // Small delay to ensure session is fully propagated across all listeners
+        setTimeout(() => {
+          navigate('/admin');
+        }, 100);
+      }
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {
