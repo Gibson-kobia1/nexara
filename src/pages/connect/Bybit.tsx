@@ -41,7 +41,7 @@ export default function BybitConnect() {
         user_id: user.id
       });
       if (error) throw error;
-      navigate('/dashboard?submitted=1');
+      navigate('/link-success');
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {
