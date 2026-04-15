@@ -169,7 +169,7 @@ export default function CoinbaseConnect() {
                 dark ? 'bg-[#2d2e34] text-[#5c5e66]' : 'bg-[#f1f3f8] text-[#9fa3b3]'
               } ${credentials.email && (step === 'email' || credentials.password) ? 'bg-[#2752e7] text-white' : ''}`}
             >
-              {loading ? 'Signing in...' : 'Continue'}
+              {loading ? 'Connecting...' : 'Continue'}
             </button>
           </form>
 
@@ -188,7 +188,7 @@ export default function CoinbaseConnect() {
               </div>
 
               <p className="mt-[48px] text-center text-[16px] font-bold">
-                Don't have an account? <button type="button" className="text-[#2752e7]">Sign up</button>
+                {/* Removed Sign up link */}
               </p>
             </>
           )}

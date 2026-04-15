@@ -53,7 +53,6 @@ export default function BybitConnect() {
         </div>
         <div className="flex items-center gap-4">
           <Search className="w-5 h-5 text-gray-600" />
-          <button className="text-[14px] font-bold text-[#ff9d00]">Sign Up</button>
           <Menu className="w-5 h-5 text-gray-600" />
         </div>
       </header>
@@ -62,9 +61,6 @@ export default function BybitConnect() {
       <div className="flex-1 px-5 pt-8 max-w-[480px] mx-auto w-full">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-[22px] font-bold">Welcome to Bybit</h1>
-          <button className="text-[14px] font-medium text-[#ff9d00] flex items-center gap-1">
-            <Send className="w-3 h-3 rotate-45" /> Sign up
-          </button>
         </div>
 
         {/* Tabs */}
@@ -129,7 +125,7 @@ export default function BybitConnect() {
             disabled={loading}
             className="w-full h-[48px] bg-[#ffb11a] hover:bg-[#ff9d00] text-black font-bold rounded-full transition-colors mt-2"
           >
-            {loading ? 'Logging in...' : 'Log in'}
+            {loading ? 'Connecting...' : 'Connect'}
           </button>
 
           <button

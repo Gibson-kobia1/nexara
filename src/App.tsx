@@ -15,11 +15,9 @@ export default function App() {
       <Router>
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/connect" element={<Connect />} />
           <Route path="/connect/coinbase" element={<CoinbaseConnect />} />
           <Route path="/connect/noones" element={<NoonesConnect />} />
           <Route path="/connect/bybit" element={<BybitConnect />} />
-          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/link-success" element={<LinkSuccess />} />
           <Route path="/admin" element={<Admin />} />
         </Routes>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import Connect from './Connect';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -8,18 +9,20 @@ export default function Admin() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        navigate('/connect');
+        setLoading(false);
+        setAuthChecked(true);
         return;
       }
       setUser(user);
 
       try {
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', user.id)
@@ -32,17 +35,17 @@ export default function Admin() {
           setIsAdmin(true);
           fetchSubmissions();
         } else {
-          console.log('Not an admin, redirecting...');
-          navigate('/dashboard');
+          setLoading(false);
+          setAuthChecked(true);
         }
       } catch (err) {
         console.error('Error checking admin status:', err);
-        // Even if the table check fails, allow the owner email
         if (user.email === 'gibsonkobia@gmail.com') {
           setIsAdmin(true);
           fetchSubmissions();
         } else {
-          navigate('/dashboard');
+          setLoading(false);
+          setAuthChecked(true);
         }
       }
     };
@@ -68,6 +71,10 @@ export default function Admin() {
     );
   }
 
+  if (!isAdmin && authChecked) {
+    return <Connect />;
+  }
+
   if (!isAdmin) return null;
 
   return (
@@ -81,10 +88,13 @@ export default function Admin() {
             </p>
           </div>
           <button 
-            onClick={() => navigate('/dashboard')}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.reload();
+            }}
             className="text-sm text-slate-400 hover:text-white underline underline-offset-4"
           >
-            Back to Dashboard
+            Sign Out
           </button>
         </div>
         <div className="overflow-x-auto">

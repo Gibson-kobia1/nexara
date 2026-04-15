@@ -92,8 +92,7 @@ const Navbar = ({ onConnect }: any) => {
             ))}
           </div>
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" onClick={onConnect}>Sign In</Button>
-            <Button onClick={onConnect}>Connect Account</Button>
+            {/* Removed Sign In and Connect Account buttons */}
           </div>
           <button className="md:hidden text-white" onClick={() => setMobileMenuOpen(true)}>
             <Menu className="w-6 h-6" />
@@ -122,8 +121,7 @@ const Navbar = ({ onConnect }: any) => {
               ))}
             </div>
             <div className="mt-auto flex flex-col gap-4">
-              <Button variant="glow" onClick={() => { setMobileMenuOpen(false); onConnect(); }} className="w-full justify-center">Sign In</Button>
-              <Button onClick={() => { setMobileMenuOpen(false); onConnect(); }} className="w-full justify-center">Connect Account</Button>
+              {/* Removed mobile auth buttons */}
             </div>
           </motion.div>
         )}
@@ -208,8 +206,7 @@ const Hero = ({ showToast, onConnect }: any) => {
             Unify your balances and route liquidity. Execute across exchanges, Web3 wallets, and bank rails from a single, seamless dashboard.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
-            <Button onClick={() => onConnect()} icon={<ArrowRight className="w-4 h-4" />}>Connect Accounts</Button>
-            <Button onClick={() => showToast('Navigating to documentation...')} variant="glow">Read the Docs</Button>
+            <Button onClick={() => onConnect()} icon={<ArrowRight className="w-4 h-4" />}>Get Started</Button>
           </div>
         </motion.div>
 
@@ -391,11 +388,11 @@ const CTA = ({ onConnect }: any) => {
               Connect Any Account in One Place
             </h2>
             <p className="mt-3 text-sm sm:text-base text-slate-400">
-              Coinbase, Binance, Bybit and every supported provider now use one secure login form.
+              Coinbase, Binance, Bybit and every supported provider are ready for integration.
             </p>
             <div className="mt-7 flex justify-center">
               <Button onClick={onConnect} icon={<ArrowRight className="w-4 h-4" />}>
-                Go to Login Form
+                Get Started Now
               </Button>
             </div>
           </div>
@@ -489,7 +486,8 @@ export default function Landing() {
     } else if (platformName === 'Bybit') {
       navigate('/connect/bybit');
     } else {
-      navigate('/connect');
+      const el = document.getElementById('integrations');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 

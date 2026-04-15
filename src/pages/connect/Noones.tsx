@@ -124,12 +124,12 @@ export default function NoonesConnect() {
               disabled={loading}
               className="w-full h-[56px] bg-[#00c076] hover:bg-[#00a868] text-white font-bold rounded-xl transition-colors disabled:opacity-70 mt-4"
             >
-              {loading ? 'Logging in...' : 'Log in'}
+              {loading ? 'Connecting...' : 'Connect'}
             </button>
 
             <div className="text-center mt-6">
               <p className="text-[14px] opacity-70">
-                No account yet? <button type="button" className="text-[#00c076] font-bold hover:underline">Sign up</button>
+                {/* Removed Sign up link */}
               </p>
             </div>
           </form>

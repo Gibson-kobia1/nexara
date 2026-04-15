@@ -56,14 +56,14 @@ export default function LinkSuccess() {
 
         <div className="flex flex-col gap-4">
           <Link
-            to="/dashboard"
+            to="/"
             className="w-full h-14 bg-white text-black font-bold rounded-2xl hover:bg-slate-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
-            Go to Dashboard
+            Back to Home
             <ArrowRight className="w-5 h-5" />
           </Link>
           <p className="text-center text-slate-500 text-sm">
-            Typically verified within 24 hours • Check your dashboard for updates
+            Typically verified within 24 hours • Check your email for updates
           </p>
         </div>
       </div>

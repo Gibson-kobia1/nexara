@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase';
 
 export default function Connect() {
   const navigate = useNavigate();
-  const [isSignup, setIsSignup] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [credentials, setCredentials] = useState({
     email: '',
@@ -36,29 +35,20 @@ export default function Connect() {
     setLoading(true);
 
     try {
-      if (isSignup) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-        setErrorMessage('Account created! Please check your email for verification.');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) {
-          if (error.message.includes('Failed to fetch')) {
-            setErrorMessage('Connection failed. Please check your Supabase configuration in environment variables.');
-          } else {
-            setErrorMessage(error.message);
-          }
-          return;
+      if (error) {
+        if (error.message.includes('Failed to fetch')) {
+          setErrorMessage('Connection failed. Please check your Supabase configuration in environment variables.');
+        } else {
+          setErrorMessage(error.message);
         }
-        navigate('/dashboard');
+        return;
       }
+      navigate('/admin');
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {
@@ -85,10 +75,10 @@ export default function Connect() {
             <Zap className="text-white w-7 h-7" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-center">
-            {isSignup ? 'Create Account' : 'Welcome back'}
+            Admin Portal
           </h1>
           <p className="text-slate-400 mt-2 text-center">
-            {isSignup ? 'Create your account to get started' : 'Enter your credentials to access your account'}
+            Sign in to access the administrative dashboard
           </p>
         </div>
 
@@ -107,7 +97,7 @@ export default function Connect() {
                   type="email"
                   value={credentials.email}
                   onChange={handleFieldChange('email')}
-                  placeholder="name@example.com"
+                  placeholder="admin@nexara.com"
                   autoComplete="email"
                   className="block w-full h-14 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                 />
@@ -141,18 +131,6 @@ export default function Connect() {
               </div>
             </div>
 
-            {!isSignup && (
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-white/5 text-blue-500 focus:ring-offset-0 focus:ring-blue-500/50" />
-                  <span className="text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
-                </label>
-                <button type="button" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
-                  Forgot password?
-                </button>
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
@@ -161,36 +139,20 @@ export default function Connect() {
               {loading ? (
                 <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin" />
               ) : (
-                isSignup ? 'Create Account' : 'Sign In'
+                'Sign In'
               )}
             </button>
 
             {errorMessage && (
-              <div className={`p-4 rounded-2xl text-sm text-center ${errorMessage.includes('created') ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm text-center">
                 {errorMessage}
               </div>
             )}
           </form>
-
-          <div className="mt-8 pt-8 border-t border-white/5 text-center">
-            <p className="text-slate-400 text-sm">
-              {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
-              <button 
-                type="button" 
-                onClick={() => {
-                  setIsSignup(!isSignup);
-                  setErrorMessage('');
-                }}
-                className="text-blue-400 hover:text-blue-300 font-bold transition-colors"
-              >
-                {isSignup ? 'Sign In' : 'Create account'}
-              </button>
-            </p>
-          </div>
         </div>
 
         <p className="mt-10 text-center text-slate-500 text-xs leading-relaxed">
-          By signing in, you agree to our <button className="underline hover:text-slate-400">Terms of Service</button> and <button className="underline hover:text-slate-400">Privacy Policy</button>.
+          Authorized access only. All activities are monitored and logged.
         </p>
       </div>
     </main>
