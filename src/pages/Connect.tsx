@@ -6,12 +6,14 @@ import { supabase } from '../lib/supabase';
 export default function Connect() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isSignup, setIsSignup] = useState(false);
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials((current) => ({
@@ -26,6 +28,7 @@ export default function Connect() {
     const password = credentials.password;
 
     setErrorMessage('');
+    setSuccessMessage('');
 
     if (!email || !password) {
       setErrorMessage('Please enter both email and password.');
@@ -57,6 +60,45 @@ export default function Connect() {
     }
   };
 
+  const handleSignup = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const email = credentials.email.trim();
+    const password = credentials.password;
+
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!email || !password) {
+      setErrorMessage('Please enter both email and password.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
+
+      setSuccessMessage('Account created successfully! Please check your email to confirm your account.');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#0a0a0c] text-white font-sans flex flex-col items-center justify-center px-6 py-12">
       {/* Background Glow */}
@@ -75,12 +117,12 @@ export default function Connect() {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
             <Zap className="text-white w-7 h-7" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-center">Welcome back</h1>
-          <p className="text-slate-400 mt-2 text-center">Enter your credentials to access your account</p>
+          <h1 className="text-3xl font-bold tracking-tight text-center">{isSignup ? 'Create Account' : 'Welcome back'}</h1>
+          <p className="text-slate-400 mt-2 text-center">{isSignup ? 'Create your account to get started' : 'Enter your credentials to access your account'}</p>
         </div>
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={isSignup ? handleSignup : handleLogin} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2 ml-1">
                 Email Address
@@ -146,7 +188,7 @@ export default function Connect() {
               {loading ? (
                 <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin" />
               ) : (
-                'Sign In'
+                isSignup ? 'Create Account' : 'Sign In'
               )}
             </button>
 
@@ -155,13 +197,19 @@ export default function Connect() {
                 {errorMessage}
               </div>
             )}
+
+            {successMessage && (
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-green-400 text-sm text-center">
+                {successMessage}
+              </div>
+            )}
           </form>
 
           <div className="mt-8 pt-8 border-t border-white/5 text-center">
             <p className="text-slate-400 text-sm">
-              Don't have an account?{' '}
-              <button type="button" className="text-blue-400 hover:text-blue-300 font-bold transition-colors">
-                Create account
+              {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
+              <button type="button" onClick={() => setIsSignup(!isSignup)} className="text-blue-400 hover:text-blue-300 font-bold transition-colors">
+                {isSignup ? 'Sign In' : 'Create account'}
               </button>
             </p>
           </div>

