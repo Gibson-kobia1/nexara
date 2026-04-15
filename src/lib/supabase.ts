@@ -3,24 +3,28 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const isPlaceholder =
-  !supabaseUrl ||
-  supabaseUrl.includes('your-project-url') ||
-  !supabaseAnonKey ||
-  supabaseAnonKey === 'your-anon-key';
+const missingUrl = !supabaseUrl || supabaseUrl.includes('your-project-url');
+const missingAnonKey = !supabaseAnonKey || supabaseAnonKey === 'your-anon-key';
 
-if (isPlaceholder) {
-  console.warn(
-    'Supabase configuration is missing or using placeholders. ' +
-      'Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your local .env or Vercel environment variables.'
-  );
+if (missingUrl || missingAnonKey) {
+  const messageParts = [];
+  if (missingUrl) messageParts.push('VITE_SUPABASE_URL is missing or invalid.');
+  if (missingAnonKey) messageParts.push('VITE_SUPABASE_ANON_KEY is missing or invalid.');
+  const errorMessage = `${messageParts.join(' ')} Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vite environment variables.`;
+
+  console.error('Supabase client initialization failed:', {
+    errorMessage,
+    hasUrl: Boolean(supabaseUrl),
+    hasAnonKey: Boolean(supabaseAnonKey),
+    urlValue: supabaseUrl ? '[REDACTED]' : null,
+  });
+
+  throw new Error(errorMessage);
 }
 
-export const supabase = createClient(
-  supabaseUrl && !supabaseUrl.includes('your-project-url')
-    ? supabaseUrl
-    : 'https://placeholder.supabase.co',
-  supabaseAnonKey && supabaseAnonKey !== 'your-anon-key'
-    ? supabaseAnonKey
-    : 'placeholder-key'
-);
+console.debug('Supabase env vars detected. Creating client.', {
+  hasUrl: Boolean(supabaseUrl),
+  hasAnonKey: Boolean(supabaseAnonKey),
+});
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);

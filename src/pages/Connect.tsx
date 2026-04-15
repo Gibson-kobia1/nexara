@@ -38,23 +38,23 @@ export default function Connect() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
+      console.debug('Supabase signInWithPassword result:', { data, error });
+
       if (error) {
-        if (error.message.includes('Failed to fetch')) {
-          setErrorMessage('Connection failed. Please check your Supabase configuration in environment variables.');
-        } else {
-          setErrorMessage(error.message);
-        }
+        console.error('Supabase signInWithPassword error:', error);
+        setErrorMessage(error.message);
         return;
       }
 
       navigate('/dashboard');
     } catch (err: any) {
-      setErrorMessage(err.message || 'An unexpected error occurred.');
+      console.error('Unexpected sign in error:', err);
+      setErrorMessage(err?.message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
@@ -81,19 +81,23 @@ export default function Connect() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
+      console.debug('Supabase signUp result:', { data, error });
+
       if (error) {
+        console.error('Supabase signUp error:', error);
         setErrorMessage(error.message);
         return;
       }
 
       setSuccessMessage('Account created successfully! Please check your email to confirm your account.');
     } catch (err: any) {
-      setErrorMessage(err.message || 'An unexpected error occurred.');
+      console.error('Unexpected sign up error:', err);
+      setErrorMessage(err?.message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
