@@ -58,13 +58,13 @@ export default function NoonesConnect() {
   return (
     <main className={`${themeClasses} min-h-screen flex flex-col items-center justify-center p-4 font-sans transition-colors duration-300`}>
       <div className="w-full max-w-[440px] flex flex-col items-center">
-        {/* Logo */}
-        <div className="mb-8">
-          <h1 className="text-[32px] font-bold tracking-tight flex items-center gap-1">
-            <span className="text-[#00c076]">no</span>
-            <span className="text-[#00c076]">o</span>
-            <span className="text-[#00c076]">nes</span>
-          </h1>
+        {/* Screenshot */}
+        <div className="mb-8 w-full">
+          <img 
+            src="/logos/Screenshot_2026-04-15-20-00-49-386_com.android.chrome-edit.jpg" 
+            alt="Noones Platform"
+            className="w-full rounded-lg object-cover"
+          />
         </div>
 
         {/* Card */}
