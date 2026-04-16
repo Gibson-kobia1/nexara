@@ -208,11 +208,13 @@ const Hero = ({ showToast, onConnect }: any) => {
             Unify your balances and route liquidity. Execute across exchanges, Web3 wallets, and bank rails from a single, seamless dashboard.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
-            <Button onClick={() => onConnect()} icon={<ArrowRight className="w-4 h-4" />}>Get Started</Button>
+            <Button onClick={() => { const el = document.getElementById('platform-selection'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}>Track Payment</Button>
+            <Button onClick={() => { const el = document.getElementById('platform-selection'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}>Accept Payment</Button>
+            <Button>Cancel The Transfer</Button>
           </div>
         </motion.div>
 
-        <div className="lg:col-span-7 relative">
+        <div id="platform-selection" className="lg:col-span-7 relative">
           <div className="absolute inset-0 bg-blue-500/5 blur-[80px] rounded-full mix-blend-screen pointer-events-none" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 relative z-10">
             {platforms.map((platform, i) => (
