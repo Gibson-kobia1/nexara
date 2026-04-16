@@ -49,27 +49,23 @@ export default function NoonesConnect() {
     ? 'bg-[#25262b]'
     : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.04)]';
 
-  const logoSrc = isDarkMode
-    ? '/logos/noonestop-dark.jpg'
-    : '/logos/noonestop.jpg';
+  const logoSrc = '/logos/noonestop.jpg';
 
   const inputClasses = isDarkMode
     ? 'bg-[#2c2e33] text-white placeholder:text-[#5c5f66]'
     : 'bg-[#f0f2f1] text-[#1a1b1e] placeholder:text-[#adb5bd]';
 
   return (
-    <main className={`${themeClasses} h-screen w-full flex flex-col items-center justify-center py-4 sm:py-8 overflow-hidden font-sans transition-colors duration-300`}>
-      <div className="w-full max-w-[460px] flex flex-col items-center px-4 space-y-6">
+    <main className={`${themeClasses} h-screen w-full flex flex-col items-center justify-center py-2 sm:py-4 overflow-hidden font-sans transition-colors duration-300`}>
+      <div className="w-full max-w-[460px] flex flex-col items-center px-4 space-y-4">
+        <img src={logoSrc} alt="Noones" className={`w-[260px] h-auto mx-auto ${isDarkMode ? 'filter invert' : ''}`} />
+
         {/* Card */}
         <div className={`${cardClasses} w-full rounded-xl p-8 sm:p-10 flex flex-col items-center`}>
-          <img
-            src={logoSrc}
-            alt="Noones"
-            className="mx-auto mb-6 max-w-[220px] sm:max-w-[260px] w-full h-auto"
-          />
+          <h1 className="text-center text-2xl font-bold mb-6">Welcome for NoOnes</h1>
 
           {/* Social Icons */}
-          <div className="flex gap-6 mb-8">
+          <div className="flex gap-6 mb-6">
             <button className="w-10 h-10 flex items-center justify-center">
               <img src="/logos/google-icon-logo-svgrepo-com.svg" alt="Google" className="w-9 h-9" />
             </button>
@@ -81,7 +77,7 @@ export default function NoonesConnect() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="w-full space-y-5">
+          <form onSubmit={handleSubmit} className="w-full space-y-4">
             <div className="space-y-2">
               <label className="block text-[14px] font-bold text-gray-500">Email/Phone number</label>
               <input
@@ -108,7 +104,7 @@ export default function NoonesConnect() {
                 </div>
               </div>
               <div className="flex justify-end">
-                <button type="button" className="text-[#00c076] text-[14px] font-bold hover:underline">Don forget password?</button>
+                <button type="button" className="text-[#00c076] text-[14px] font-bold hover:underline">Don't forget password?</button>
               </div>
             </div>
 
@@ -117,12 +113,12 @@ export default function NoonesConnect() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[60px] bg-[#00c076] hover:bg-[#00a868] text-white font-bold text-[20px] rounded-xl transition-colors disabled:opacity-70 mt-4"
+              className="w-full h-[60px] bg-[#00c076] hover:bg-[#00a868] text-white font-bold text-[20px] rounded-xl transition-colors disabled:opacity-70 mt-6"
             >
               {loading ? 'Connecting...' : 'Log in'}
             </button>
 
-            <div className="text-center mt-8">
+            <div className="text-center mt-6">
               <p className="text-[16px] font-medium text-gray-400">
                 No account yet? <span className="text-[#00c076] cursor-pointer font-bold hover:underline">Sign up</span>
               </p>
@@ -131,7 +127,7 @@ export default function NoonesConnect() {
         </div>
 
         {/* Footer at Bottom */}
-        <div className="w-full flex items-center justify-between pt-4">
+        <div className="w-full flex items-center justify-between pt-6">
           <div className="flex items-center gap-3">
             <div 
               onClick={() => setIsDarkMode(!isDarkMode)}
