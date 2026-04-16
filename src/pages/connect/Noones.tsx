@@ -49,7 +49,7 @@ export default function NoonesConnect() {
     ? 'bg-[#25262b]'
     : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.04)]';
 
-  const logoSrc = isDarkMode ? '/logos/noonesdark.png' : '/logos/nooneslight.png';
+  const logoSrc = isDarkMode ? '/logos/noonesdark.jpg' : '/logos/nooneslight.jpg';
 
   const inputClasses = isDarkMode
     ? 'bg-[#2c2e33] text-white placeholder:text-[#5c5f66]'
