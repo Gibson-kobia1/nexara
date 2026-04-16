@@ -43,11 +43,11 @@ export default function NoonesConnect() {
 
   const themeClasses = isDarkMode 
     ? 'bg-[#1F1F1F] text-[#E7E7E7]' 
-    : 'bg-[#E7E7E7] text-[#111111]';
+    : 'bg-[#F2F2F2] text-[#111111]';
   
   const cardClasses = isDarkMode
     ? 'bg-[#25262B]'
-    : 'bg-[#F4F4F4] shadow-[0_4px_24px_rgba(0,0,0,0.04)]';
+    : 'bg-[#FFFFFF] shadow-[0_4px_24px_rgba(0,0,0,0.04)]';
 
   const logoSrc = isDarkMode ? '/logos/noonesdark.jpg' : '/logos/nooneslight.jpg';
 
