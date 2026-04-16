@@ -2,30 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
-function NoonesLogo() {
-  return (
-    <div className="flex items-center justify-center">
-      <svg width="150" height="48" viewBox="0 0 180 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* n */}
-        <path d="M10 25V45H18V28.5C18 24.5 21 21.5 25 21.5C29 21.5 32 24.5 32 28.5V45H40V28.5C40 20.5 33.5 14 25 14C19 14 14 18 11.5 23V15H3V45H11V25H10Z" fill="#00C076"/>
-        {/* o with sparkle */}
-        <circle cx="65" cy="30" r="11" stroke="#00C076" strokeWidth="7"/>
-        <path d="M60 8L62 12" stroke="#00C076" strokeWidth="3.5" strokeLinecap="round"/>
-        <path d="M65 5V10" stroke="#00C076" strokeWidth="3.5" strokeLinecap="round"/>
-        <path d="M70 8L68 12" stroke="#00C076" strokeWidth="3.5" strokeLinecap="round"/>
-        {/* o */}
-        <circle cx="95" cy="30" r="11" stroke="#00C076" strokeWidth="7"/>
-        {/* n */}
-        <path d="M115 25V45H123V28.5C123 24.5 126 21.5 130 21.5C134 21.5 137 24.5 137 28.5V45H145V28.5C145 20.5 138.5 14 130 14C124 14 119 18 116.5 23V15H108V45H116V25H115Z" fill="#00C076"/>
-        {/* e */}
-        <path d="M165 30C165 24 160 19 154 19C148 19 143 24 143 30C143 36 148 41 154 41C158 41 161.5 39 163.5 36L157.5 32.5C156.5 33.5 155.5 34 154 34C152 34 150.5 32.5 150.5 30.5H165V30ZM150.5 27.5C150.5 25.5 152 24 154 24C156 24 157.5 25.5 157.5 27.5H150.5Z" fill="#00C076"/>
-        {/* s */}
-        <path d="M175 36C175 38 176.5 39.5 178.5 39.5C180.5 39.5 182 38 182 36C182 34.5 181 33.5 179.5 32.5L174.5 29.5C172.5 28.5 171.5 26.5 171.5 24.5C171.5 21.5 174 19 177 19C180 19 182.5 21.5 182.5 24.5H175.5C175.5 23.5 176.5 22.5 177.5 22.5C178.5 22.5 179.5 23.5 179.5 24.5C179.5 25.5 178.5 26.5 177.5 27.5L172.5 30.5C170.5 31.5 169.5 33.5 169.5 36C169.5 39.5 172.5 42.5 176.5 42.5C180.5 42.5 183.5 39.5 183.5 36H175Z" fill="#00C076"/>
-      </svg>
-    </div>
-  );
-}
-
 export default function NoonesConnect() {
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -73,6 +49,10 @@ export default function NoonesConnect() {
     ? 'bg-[#25262b]'
     : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.04)]';
 
+  const logoSrc = isDarkMode
+    ? '/logos/noonestop-dark.jpg'
+    : '/logos/noonestop.jpg';
+
   const inputClasses = isDarkMode
     ? 'bg-[#2c2e33] text-white placeholder:text-[#5c5f66]'
     : 'bg-[#f0f2f1] text-[#1a1b1e] placeholder:text-[#adb5bd]';
@@ -80,13 +60,14 @@ export default function NoonesConnect() {
   return (
     <main className={`${themeClasses} h-screen w-full flex flex-col items-center justify-center py-4 sm:py-8 overflow-hidden font-sans transition-colors duration-300`}>
       <div className="w-full max-w-[460px] flex flex-col items-center px-4 space-y-6">
-        {/* Logo */}
-        <NoonesLogo />
-
         {/* Card */}
-        <div className={`${cardClasses} w-full rounded-[24px] p-8 sm:p-10 flex flex-col items-center`}>
-          <h2 className="text-[28px] sm:text-[32px] font-bold mb-6 text-center whitespace-nowrap">Welcome for NoOnes</h2>
-          
+        <div className={`${cardClasses} w-full rounded-xl p-8 sm:p-10 flex flex-col items-center`}>
+          <img
+            src={logoSrc}
+            alt="Noones"
+            className="mx-auto mb-6 max-w-[220px] sm:max-w-[260px] w-full h-auto"
+          />
+
           {/* Social Icons */}
           <div className="flex gap-6 mb-8">
             <button className="w-10 h-10 flex items-center justify-center">
