@@ -42,8 +42,8 @@ export default function NoonesConnect() {
   };
 
   const themeClasses = isDarkMode 
-    ? 'bg-[#1a1b1e] text-white' 
-    : 'bg-[#f4f7f6] text-[#1a1b1e]';
+    ? 'bg-[#3a3a3a] text-white' 
+    : 'bg-[#e8e8e8] text-[#1a1b1e]';
   
   const cardClasses = isDarkMode
     ? 'bg-[#25262b]'
@@ -73,7 +73,7 @@ export default function NoonesConnect() {
               <img src="/logos/apple-logo-svgrepo-com.svg" alt="Apple" className={`w-9 h-9 ${isDarkMode ? 'invert' : ''}`} />
             </button>
             <button className="w-10 h-10 flex items-center justify-center">
-              <img src="/logos/telegram-svgrepo-com.svg" alt="Telegram" className="w-9 h-9" />
+              <img src="/logos/telegram.svg" alt="Telegram" className="w-9 h-9" />
             </button>
           </div>
 
