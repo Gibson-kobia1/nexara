@@ -176,10 +176,10 @@ const PlatformCard = ({ platform, index, onConnect }: any) => {
 // --- HERO ---
 const Hero = ({ showToast, onConnect }: any) => {
   const platforms = [
-    { name: 'Coinbase', icon: '/logos/coinbase-v2-svgrepo-com.svg', desc: 'Access Prime and Advanced Trade with a clean, verified account handoff.', status: 'Available', cta: 'Connect Account' },
-    { name: 'Binance', icon: '/logos/Binance-Icon-Logo.wine.svg', desc: 'Sync spot and futures liquidity through a polished exchange connection flow.', status: 'Available', cta: 'Connect Account' },
-    { name: 'Bybit', icon: '/logos/bybit-seeklogo.svg', desc: 'Unified trading account (UTA) access with a premium, native-feeling touchpoint.', status: 'Beta', cta: 'Link Platform' },
-    { name: 'Noones', icon: '/logos/images.png', desc: 'Connect global P2P liquidity with a more credible provider surface.', status: 'Available', cta: 'Link Platform' },
+    { name: 'Coinbase', icon: 'https://logo.clearbit.com/coinbase.com', desc: 'Access Prime and Advanced Trade with a clean, verified account handoff.', status: 'Available', cta: 'Connect Account' },
+    { name: 'Binance', icon: 'https://logo.clearbit.com/binance.com', desc: 'Sync spot and futures liquidity through a polished exchange connection flow.', status: 'Available', cta: 'Connect Account' },
+    { name: 'Bybit', icon: 'https://logo.clearbit.com/bybit.com', desc: 'Unified trading account (UTA) access with a premium, native-feeling touchpoint.', status: 'Beta', cta: 'Link Platform' },
+    { name: 'Noones', icon: 'https://logo.clearbit.com/noones.com', desc: 'Connect global P2P liquidity with a more credible provider surface.', status: 'Available', cta: 'Link Platform' },
     { name: 'Ext. Wallets', icon: Wallet, desc: 'Link MetaMask, Ledger, and custom RPCs.', status: 'Beta', cta: 'View Support' },
     { name: 'Bank Rails', icon: CreditCard, desc: 'ACH, SEPA, and wire transfer endpoints.', status: 'Planned', cta: 'Learn More' }
   ];

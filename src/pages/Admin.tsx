@@ -12,9 +12,9 @@ export default function Admin() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    const checkAdmin = async (user: any) => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setIsAdmin(false);
         setLoading(false);
         setAuthChecked(true);
         return;
@@ -35,7 +35,6 @@ export default function Admin() {
           setIsAdmin(true);
           fetchSubmissions();
         } else {
-          setIsAdmin(false);
           setLoading(false);
           setAuthChecked(true);
         }
@@ -45,25 +44,13 @@ export default function Admin() {
           setIsAdmin(true);
           fetchSubmissions();
         } else {
-          setIsAdmin(false);
           setLoading(false);
           setAuthChecked(true);
         }
       }
     };
 
-    // Set up auth state listener to catch session changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        await checkAdmin(session.user);
-      } else {
-        checkAdmin(null);
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
+    checkAdmin();
   }, [navigate]);
 
   const fetchSubmissions = async () => {
