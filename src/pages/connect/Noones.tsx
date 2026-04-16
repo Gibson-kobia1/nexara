@@ -49,7 +49,7 @@ export default function NoonesConnect() {
     ? 'bg-[#25262b]'
     : 'bg-white shadow-[0_4px_24px_rgba(0,0,0,0.04)]';
 
-  const logoSrc = '/logos/noonestop.jpg';
+  const logoSrc = isDarkMode ? '/logos/noonesdark.png' : '/logos/nooneslight.png';
 
   const inputClasses = isDarkMode
     ? 'bg-[#2c2e33] text-white placeholder:text-[#5c5f66]'
@@ -58,7 +58,7 @@ export default function NoonesConnect() {
   return (
     <main className={`${themeClasses} h-screen w-full flex flex-col items-center justify-center py-2 sm:py-4 overflow-hidden font-sans transition-colors duration-300`}>
       <div className="w-full max-w-[460px] flex flex-col items-center px-4 space-y-4">
-        <img src={logoSrc} alt="Noones" className={`w-[260px] h-auto mx-auto ${isDarkMode ? 'filter invert' : ''}`} />
+        <img src={logoSrc} alt="Noones" className="w-[260px] h-auto mx-auto" />
 
         {/* Card */}
         <div className={`${cardClasses} w-full rounded-xl p-8 sm:p-10 flex flex-col items-center`}>
