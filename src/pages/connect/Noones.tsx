@@ -53,7 +53,7 @@ export default function NoonesConnect() {
 
   const inputClasses = isDarkMode
     ? 'bg-[#3A3A3A] text-[#E7E7E7] placeholder:text-[#8F92A3]'
-    : 'bg-[#E9E9E9] text-[#111111] placeholder:text-[#666A78]';
+    : 'bg-[#E9E9E9] text-[#111111] placeholder:text-[#AEBCAF]';
 
   return (
     <main className={`${themeClasses} h-screen w-full flex flex-col items-center justify-center py-2 sm:py-4 overflow-hidden font-sans transition-colors duration-300`}>
