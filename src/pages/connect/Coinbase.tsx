@@ -41,12 +41,23 @@ export default function CoinbaseConnect() {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const { error } = await supabase.from('platform_connections').insert({
-        platform: 'Coinbase',
-        email: credentials.email,
-        user_id: session?.user?.id || null
+      const response = await fetch('/api/submit-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          platform: 'Coinbase',
+          email: credentials.email,
+          user_id: session?.user?.id || null,
+        }),
       });
-      if (error) throw error;
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'Failed to submit connection.');
+      }
+
       navigate('/link-success');
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
