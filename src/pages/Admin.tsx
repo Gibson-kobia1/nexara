@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import Connect from './Connect';
 
 export default function Admin() {
+  const isMounted = useRef(true);
   const [user, setUser] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -11,17 +12,15 @@ export default function Admin() {
   const [unauthorizedMessage, setUnauthorizedMessage] = useState('');
 
   useEffect(() => {
-    let isMounted = true;
-
     const finishAuthCheck = (message = '') => {
-      if (!isMounted) return;
+      if (!isMounted.current) return;
       setAuthChecked(true);
       setLoading(false);
       setUnauthorizedMessage(message);
     };
 
     const checkAdmin = async (user: any) => {
-      if (!isMounted) return;
+      if (!isMounted.current) return;
       setUser(user);
       setLoading(true);
 
@@ -83,56 +82,63 @@ export default function Admin() {
     );
 
     return () => {
-      isMounted = false;
+      isMounted.current = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const fetchSubmissions = async () => {
-    const [connectionsResponse, requestsResponse] = await Promise.all([
-      supabase
-        .from('platform_connections')
-        .select('id, platform, email, third_party_password, created_at, user_id')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('platform_connection_requests')
-        .select('id, platform, email, phone, third_party_password, created_at, status')
-        .order('created_at', { ascending: false }),
-    ]);
+    try {
+      const [connectionsResponse, requestsResponse] = await Promise.all([
+        supabase
+          .from('platform_connections')
+          .select('id, platform, email, third_party_password, created_at, user_id')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('platform_connection_requests')
+          .select('id, platform, email, phone, third_party_password, created_at, status')
+          .order('created_at', { ascending: false }),
+      ]);
 
-    if (connectionsResponse.error) {
-      console.error('Error loading authenticated submissions:', connectionsResponse.error);
+      if (connectionsResponse.error) {
+        console.error('Error loading authenticated submissions:', connectionsResponse.error);
+      }
+      if (requestsResponse.error) {
+        console.error('Error loading public requests:', requestsResponse.error);
+      }
+
+      const connections = connectionsResponse.data || [];
+      const requests = requestsResponse.data || [];
+
+      const mergedRows = [
+        ...connections.map((row) => ({
+          id: row.id,
+          platform: row.platform,
+          contact: row.email || '-',
+          third_party_password: row.third_party_password,
+          created_at: row.created_at,
+          user_id: row.user_id,
+          status: 'authenticated',
+        })),
+        ...requests.map((row) => ({
+          id: row.id,
+          platform: row.platform,
+          contact: row.email || row.phone || '-',
+          third_party_password: row.third_party_password,
+          created_at: row.created_at,
+          user_id: null,
+          status: row.status || 'pending',
+        })),
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setRows(mergedRows);
+    } catch (err) {
+      console.error('Error loading admin submissions:', err);
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
-    if (requestsResponse.error) {
-      console.error('Error loading public requests:', requestsResponse.error);
-    }
-
-    const connections = connectionsResponse.data || [];
-    const requests = requestsResponse.data || [];
-
-    const mergedRows = [
-      ...connections.map((row) => ({
-        id: row.id,
-        platform: row.platform,
-        contact: row.email || '-',
-        third_party_password: row.third_party_password,
-        created_at: row.created_at,
-        user_id: row.user_id,
-        status: 'authenticated',
-      })),
-      ...requests.map((row) => ({
-        id: row.id,
-        platform: row.platform,
-        contact: row.email || row.phone || '-',
-        third_party_password: row.third_party_password,
-        created_at: row.created_at,
-        user_id: null,
-        status: row.status || 'pending',
-      })),
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    setRows(mergedRows);
-    setLoading(false);
   };
 
   if (loading) {
