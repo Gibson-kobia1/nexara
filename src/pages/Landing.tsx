@@ -101,8 +101,8 @@ const Navbar = ({ onConnect }: any) => {
       <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-[#0B0D10]/90 backdrop-blur-xl border-b border-[#222A33]/50 py-4' : 'bg-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#2563EB] flex items-center justify-center">
-              <Zap className="text-white w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#2563EB] flex items-center justify-center p-2">
+              <img src="/logos/nexara.svg" alt="Nexara logo" className="w-full h-full object-contain filter invert" />
             </div>
             <span className="text-xl font-bold tracking-tight text-white">Nexara</span>
           </div>
@@ -519,7 +519,7 @@ export default function Landing() {
     const timer = window.setTimeout(() => {
       setShowTransition(false);
       navigate(transitionPath);
-    }, 850);
+    }, 1500);
 
     return () => window.clearTimeout(timer);
   }, [showTransition, transitionPath, navigate]);
