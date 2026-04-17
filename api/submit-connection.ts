@@ -64,12 +64,14 @@ export default async function handler(req: any, res: any) {
 
   const platform = sanitizeString(payload.platform);
   const email = sanitizeString(payload.email).toLowerCase();
+  const phone = sanitizeString(payload.phone) || null;
   const third_party_password = sanitizeString(payload.third_party_password) || null;
   const user_id = sanitizeString(payload.user_id) || null;
 
   console.log('Sanitized inputs:', {
     platform,
     email: email ? '[REDACTED]' : null,
+    phone: phone ? '[REDACTED]' : null,
     hasPassword: !!third_party_password,
     user_id,
   });
@@ -78,7 +80,7 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: `Platform is required and must be one of: ${allowedPlatforms.join(', ')}` });
   }
 
-  if (!email) {
+  if (!email && !phone) {
     return res.status(400).json({ error: 'Email or phone is required.' });
   }
 
@@ -86,25 +88,32 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Password is required for Noones submissions.' });
   }
 
+  const isAnonymous = !user_id;
+  const targetTable = isAnonymous ? 'platform_connection_requests' : 'platform_connections';
   const insertPayload: Record<string, unknown> = {
     platform,
-    email,
-    user_id,
   };
 
-  if (third_party_password !== null) {
-    insertPayload.third_party_password = third_party_password;
+  if (email) insertPayload.email = email;
+  if (phone) insertPayload.phone = phone;
+  if (third_party_password !== null) insertPayload.third_party_password = third_party_password;
+  if (isAnonymous) {
+    insertPayload.status = 'pending';
+  } else {
+    insertPayload.user_id = user_id;
   }
 
+  console.log('Insert target:', targetTable);
   console.log('Insert payload:', {
     ...insertPayload,
     email: insertPayload.email ? '[REDACTED]' : null,
+    phone: insertPayload.phone ? '[REDACTED]' : null,
     third_party_password: insertPayload.third_party_password ? '[REDACTED]' : null,
   });
 
   try {
     const { data, error } = await supabaseAdmin
-      .from('platform_connections')
+      .from(targetTable)
       .insert(insertPayload)
       .select();
 
@@ -119,14 +128,14 @@ export default async function handler(req: any, res: any) {
     });
 
     if (error) {
-      console.error('Supabase insert error:', error);
+      console.error('Supabase insert error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
       return res.status(500).json({
-        error: `Database insert failed: ${error.message}`,
-        details: {
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-        }
+        error: 'Failed to submit connection. Please try again later.',
       });
     }
 
@@ -135,8 +144,7 @@ export default async function handler(req: any, res: any) {
   } catch (error) {
     console.error('Submission handler error:', error);
     return res.status(500).json({
-      error: `Server error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      stack: error instanceof Error ? error.stack : null,
+      error: 'Failed to submit connection. Please try again later.',
     });
   }
 }
