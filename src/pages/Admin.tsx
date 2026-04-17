@@ -4,6 +4,7 @@ import Connect from './Connect';
 
 export default function Admin() {
   const isMounted = useRef(true);
+  const initialLoadDone = useRef(false);
   const [user, setUser] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +95,7 @@ export default function Admin() {
       console.log('Admin: session loaded:', session ? { user: { id: session.user.id, email: session.user.email } } : null);
       addDebugMessage(session ? `session found: ${session.user.email} / ${session.user.id}` : 'no session');
       await initializeAdmin(session?.user ?? null);
+      initialLoadDone.current = true;
     };
 
     loadSession();
@@ -101,7 +103,9 @@ export default function Admin() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Admin: auth state change:', event, session ? { user: { id: session.user.id, email: session.user.email } } : null);
-        await initializeAdmin(session?.user ?? null);
+        if (initialLoadDone.current) {
+          await initializeAdmin(session?.user ?? null);
+        }
       }
     );
 
@@ -175,36 +179,26 @@ export default function Admin() {
     }
   };
 
-  if (loading) {
-    console.log('Admin: rendering loading spinner');
-    return (
-      <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center text-white">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
-      </div>
-    );
-  }
-
-  if (!isAdmin && authChecked) {
-    console.log('Admin: rendering Connect with error:', unauthorizedMessage);
-    return <Connect externalError={unauthorizedMessage} />;
-  }
-
-  if (!isAdmin) {
-    console.log('Admin: not admin, rendering null');
-    return null;
-  }
-
-  console.log('Admin: rendering admin page');
-  return (
-    <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
-      <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5 mb-4">
-        <h2 className="text-lg font-semibold mb-2">Debug Messages</h2>
-        <div className="text-sm text-slate-300 max-h-40 overflow-y-auto">
-          {debugMessages.map((msg, idx) => (
-            <div key={idx} className="mb-1">{msg}</div>
-          ))}
+  const renderContent = () => {
+    if (!authChecked) {
+      console.log('Admin: rendering auth check placeholder');
+      return (
+        <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-center gap-3 text-slate-300">
+            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+            <span>Checking admin session...</span>
+          </div>
         </div>
-      </div>
+      );
+    }
+
+    if (!isAdmin) {
+      console.log('Admin: rendering Connect with error:', unauthorizedMessage);
+      return <Connect externalError={unauthorizedMessage} />;
+    }
+
+    console.log('Admin: rendering admin page');
+    return (
       <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -252,8 +246,8 @@ export default function Admin() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
-                    No submissions found.
+                  <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
+                    {loading ? 'Loading submissions...' : 'No submissions found.'}
                   </td>
                 </tr>
               )}
@@ -261,6 +255,20 @@ export default function Admin() {
           </table>
         </div>
       </div>
+    );
+  };
+
+  return (
+    <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
+      <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5 mb-4">
+        <h2 className="text-lg font-semibold mb-2">Debug Messages</h2>
+        <div className="text-sm text-slate-300 max-h-40 overflow-y-auto">
+          {debugMessages.map((msg, idx) => (
+            <div key={idx} className="mb-1">{msg}</div>
+          ))}
+        </div>
+      </div>
+      {renderContent()}
     </main>
   );
 }
