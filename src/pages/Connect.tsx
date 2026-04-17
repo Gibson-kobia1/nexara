@@ -71,7 +71,7 @@ export default function Connect() {
 
       <div className="w-full max-w-[440px] relative z-10">
         <div className="flex flex-col items-center mb-10">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#2563EB] flex items-center justify-center mb-6 shadow-lg shadow-[#2563EB]/20">
             <Zap className="text-white w-7 h-7" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-center">

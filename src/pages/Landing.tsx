@@ -11,8 +11,16 @@ import {
 
 // --- THEME & UTILS ---
 const colors = {
-  primary: 'from-blue-500 to-cyan-400',
-  glass: 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.08]',
+  background: '#0B0D10',
+  deepSurface: '#12161B',
+  cardSurface: '#171C22',
+  secondarySurface: '#222A33',
+  primaryText: '#F3F5F7',
+  secondaryText: '#A7B0BA',
+  accentBlue: '#2563EB',
+  accentGreen: '#10B981',
+  primary: 'from-[#2563EB] to-[#2563EB]',
+  glass: 'bg-[#171C22]/80 backdrop-blur-xl border border-[#222A33]/50',
 };
 
 // --- REUSABLE UI COMPONENTS ---
@@ -78,10 +86,10 @@ const Navbar = ({ onConnect }: any) => {
 
   return (
     <>
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-[#0a0a0c]/90 backdrop-blur-xl border-b border-white/5 py-4' : 'bg-transparent py-6'}`}>
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-[#0B0D10]/90 backdrop-blur-xl border-b border-[#222A33]/50 py-4' : 'bg-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#2563EB] flex items-center justify-center">
               <Zap className="text-white w-5 h-5" />
             </div>
             <span className="text-xl font-bold tracking-tight text-white">Nexara</span>
@@ -109,7 +117,7 @@ const Navbar = ({ onConnect }: any) => {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[60] bg-[#0a0a0c] p-6 flex flex-col"
+            className="fixed inset-0 z-[60] bg-[#0B0D10] p-6 flex flex-col"
           >
             <div className="flex justify-between items-center mb-12">
               <span className="text-xl font-bold text-white">Nexara</span>
@@ -135,39 +143,47 @@ const Navbar = ({ onConnect }: any) => {
 // --- PLATFORM CARD ---
 const PlatformCard = ({ platform, index, onConnect }: any) => {
   const hasLogoAsset = typeof platform.icon === 'string';
+  const logoStyles = {
+    'Coinbase': 'p-3',
+    'Binance': 'p-2',
+    'Bybit': 'p-2.5',
+    'Noones': 'p-2',
+    'Ext. Wallets': '',
+    'Bank Rails': ''
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 + (index * 0.05) }}
       onClick={onConnect}
-      className="group relative p-4 sm:p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/15 transition-all duration-300 overflow-hidden flex flex-col h-full shadow-lg cursor-pointer"
+      className="group relative p-4 sm:p-5 rounded-2xl bg-[#171C22] border border-[#222A33] hover:border-[#2563EB]/30 transition-all duration-300 overflow-hidden flex flex-col h-full shadow-lg cursor-pointer"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#2563EB]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       <div className="relative z-10 flex items-start justify-between mb-3">
         <div className="flex items-center gap-4">
-          <div className={`relative flex items-center justify-center overflow-hidden rounded-2xl border transition-colors ${hasLogoAsset ? 'h-16 w-16 bg-white/95 border-white/80 shadow-[0_10px_30px_rgba(255,255,255,0.08)]' : 'h-14 w-14 bg-white/5 border-white/10 group-hover:bg-white/10'}`}>
+          <div className={`relative flex items-center justify-center overflow-hidden rounded-2xl border transition-colors ${hasLogoAsset ? 'h-16 w-16 bg-[#222A33] border-[#2563EB]/20 shadow-[0_10px_30px_rgba(37,99,235,0.08)]' : 'h-14 w-14 bg-[#12161B] border-[#222A33] group-hover:bg-[#171C22]'}`}>
             {hasLogoAsset ? (
               <img
                 src={platform.icon}
                 alt={`${platform.name} logo`}
                 referrerPolicy="no-referrer"
-                className="object-contain p-2 w-full h-full"
+                className={`object-contain w-full h-full ${logoStyles[platform.name] || 'p-2'}`}
               />
             ) : (
-              <platform.icon className="w-6 h-6 text-slate-300 group-hover:text-cyan-400 transition-colors" />
+              <platform.icon className="w-6 h-6 text-[#A7B0BA] group-hover:text-[#2563EB] transition-colors" />
             )}
           </div>
           <h3 className="text-base font-semibold text-white tracking-tight">{platform.name}</h3>
         </div>
-        <span className={`text-[9px] uppercase tracking-wider font-semibold px-2 py-1 rounded-full border ${platform.status === 'Available' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+        <span className={`text-[9px] uppercase tracking-wider font-semibold px-2 py-1 rounded-full border ${platform.status === 'Available' ? 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20' : 'bg-[#2563EB]/10 text-[#2563EB] border-[#2563EB]/20'}`}>
           {platform.status}
         </span>
       </div>
-      <p className="relative z-10 text-xs sm:text-sm text-slate-400 mb-4 flex-grow leading-relaxed">
+      <p className="relative z-10 text-xs sm:text-sm text-[#A7B0BA] mb-4 flex-grow leading-relaxed">
         {platform.desc}
       </p>
-      <div className="relative z-10 flex items-center gap-1.5 text-xs font-medium text-slate-500 group-hover:text-cyan-400 transition-colors mt-auto cursor-pointer">
+      <div className="relative z-10 flex items-center gap-1.5 text-xs font-medium text-[#A7B0BA] group-hover:text-[#2563EB] transition-colors mt-auto cursor-pointer">
         {platform.cta}
         <ArrowRight className="w-3 h-3 -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300" />
       </div>
@@ -180,15 +196,15 @@ const Hero = ({ showToast, onConnect }: any) => {
   const platforms = [
     { name: 'Coinbase', icon: '/logos/coinbase-v2-svgrepo-com.svg', desc: 'Access Prime and Advanced Trade with a clean, verified account handoff.', status: 'Available', cta: 'Connect Account' },
     { name: 'Binance', icon: '/logos/Binance-Icon-Logo.wine.svg', desc: 'Sync spot and futures liquidity through a polished exchange connection flow.', status: 'Available', cta: 'Connect Account' },
-    { name: 'Bybit', icon: '/logos/bybiticon.png', desc: 'Unified trading account (UTA) access with a premium, native-feeling touchpoint.', status: 'Beta', cta: 'Link Platform' },
-    { name: 'Noones', icon: '/logos/noonesicon.png', desc: 'Connect global P2P liquidity with a more credible provider surface.', status: 'Available', cta: 'Link Platform' },
+    { name: 'Bybit', icon: '/logos/bybit-seeklogo.svg', desc: 'Unified trading account (UTA) access with a premium, native-feeling touchpoint.', status: 'Beta', cta: 'Link Platform' },
+    { name: 'Noones', icon: '/logos/noones.svg', desc: 'Connect global P2P liquidity with a more credible provider surface.', status: 'Available', cta: 'Link Platform' },
     { name: 'Ext. Wallets', icon: Wallet, desc: 'Link MetaMask, Ledger, and custom RPCs.', status: 'Beta', cta: 'View Support' },
     { name: 'Bank Rails', icon: CreditCard, desc: 'ACH, SEPA, and wire transfer endpoints.', status: 'Planned', cta: 'Learn More' }
   ];
 
   return (
     <section id="integrations" className="relative pt-28 pb-16 md:pt-40 md:pb-24 overflow-hidden border-b border-white/5">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-600/15 blur-[120px] rounded-[100%] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[#2563EB]/10 blur-[120px] rounded-[100%] pointer-events-none" />
       <div className="max-w-7xl mx-auto px-6 relative z-10 grid lg:grid-cols-12 gap-10 md:gap-16 items-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -258,7 +274,7 @@ const Features = () => {
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {features.map((feat, i) => (
-            <GlassCard key={i} delay={i * 0.1} className="group hover:border-cyan-500/30 transition-colors duration-500">
+            <GlassCard key={i} delay={i * 0.1} className="group hover:border-[#2563EB]/30 transition-colors duration-500">
               <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:bg-blue-500/20 transition-colors">
                 <feat.icon className="w-6 h-6 text-cyan-400" />
               </div>
