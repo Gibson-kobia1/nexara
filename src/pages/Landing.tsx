@@ -152,7 +152,7 @@ const PlatformCard = ({ platform, index, onConnect }: any) => {
                 src={platform.icon}
                 alt={`${platform.name} logo`}
                 referrerPolicy="no-referrer"
-                className="object-contain p-1.5 w-full h-full"
+                className="object-contain p-2 w-full h-full"
               />
             ) : (
               <platform.icon className="w-6 h-6 text-slate-300 group-hover:text-cyan-400 transition-colors" />
@@ -180,8 +180,8 @@ const Hero = ({ showToast, onConnect }: any) => {
   const platforms = [
     { name: 'Coinbase', icon: '/logos/coinbase-v2-svgrepo-com.svg', desc: 'Access Prime and Advanced Trade with a clean, verified account handoff.', status: 'Available', cta: 'Connect Account' },
     { name: 'Binance', icon: '/logos/Binance-Icon-Logo.wine.svg', desc: 'Sync spot and futures liquidity through a polished exchange connection flow.', status: 'Available', cta: 'Connect Account' },
-    { name: 'Bybit', icon: '/logos/bybit-seeklogo.svg', desc: 'Unified trading account (UTA) access with a premium, native-feeling touchpoint.', status: 'Beta', cta: 'Link Platform' },
-    { name: 'Noones', icon: '/logos/noonestop.jpg', desc: 'Connect global P2P liquidity with a more credible provider surface.', status: 'Available', cta: 'Link Platform' },
+    { name: 'Bybit', icon: '/logos/bybiticon.png', desc: 'Unified trading account (UTA) access with a premium, native-feeling touchpoint.', status: 'Beta', cta: 'Link Platform' },
+    { name: 'Noones', icon: '/logos/noonesicon.png', desc: 'Connect global P2P liquidity with a more credible provider surface.', status: 'Available', cta: 'Link Platform' },
     { name: 'Ext. Wallets', icon: Wallet, desc: 'Link MetaMask, Ledger, and custom RPCs.', status: 'Beta', cta: 'View Support' },
     { name: 'Bank Rails', icon: CreditCard, desc: 'ACH, SEPA, and wire transfer endpoints.', status: 'Planned', cta: 'Learn More' }
   ];
