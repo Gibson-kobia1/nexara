@@ -32,31 +32,17 @@ export default function Admin() {
     setLoading(true);
     setAuthChecked(false);
 
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      const isOwner = user.email === 'gibsonkobia@gmail.com';
-      if (!profile?.is_admin && !isOwner) {
-        setIsAdmin(false);
-        finishAuthCheck('You do not have admin access with this account.');
-        return;
-      }
-
-      setIsAdmin(true);
-      setUnauthorizedMessage('');
-      await fetchSubmissions();
-      finishAuthCheck();
-    } catch (err) {
-      console.error('Error checking admin status:', err);
+    const isOwner = user.email === 'gibsonkobia@gmail.com';
+    if (!isOwner) {
       setIsAdmin(false);
-      finishAuthCheck('Unable to verify admin access. Please try again later.');
+      finishAuthCheck('You do not have admin access with this account.');
+      return;
     }
+
+    setIsAdmin(true);
+    setUnauthorizedMessage('');
+    await fetchSubmissions();
+    finishAuthCheck();
   };
 
   useEffect(() => {
