@@ -145,17 +145,17 @@ const PlatformCard = ({ platform, index, onConnect }: any) => {
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       <div className="relative z-10 flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className={`relative flex items-center justify-center overflow-hidden rounded-2xl border transition-colors ${hasLogoAsset ? 'h-12 w-12 bg-white/95 border-white/80 shadow-[0_10px_30px_rgba(255,255,255,0.08)]' : 'h-11 w-11 bg-white/5 border-white/10 group-hover:bg-white/10'}`}>
+        <div className="flex items-center gap-4">
+          <div className={`relative flex items-center justify-center overflow-hidden rounded-2xl border transition-colors ${hasLogoAsset ? 'h-16 w-16 bg-white/95 border-white/80 shadow-[0_10px_30px_rgba(255,255,255,0.08)]' : 'h-14 w-14 bg-white/5 border-white/10 group-hover:bg-white/10'}`}>
             {hasLogoAsset ? (
               <img
                 src={platform.icon}
                 alt={`${platform.name} logo`}
                 referrerPolicy="no-referrer"
-                className="object-contain p-2 w-full h-full"
+                className="object-contain p-1.5 w-full h-full"
               />
             ) : (
-              <platform.icon className="w-5 h-5 text-slate-300 group-hover:text-cyan-400 transition-colors" />
+              <platform.icon className="w-6 h-6 text-slate-300 group-hover:text-cyan-400 transition-colors" />
             )}
           </div>
           <h3 className="text-base font-semibold text-white tracking-tight">{platform.name}</h3>
