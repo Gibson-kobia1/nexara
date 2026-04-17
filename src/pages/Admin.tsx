@@ -19,9 +19,14 @@ export default function Admin() {
   };
 
   const initializeAdmin = async (user: any) => {
-    if (!isMounted.current) return;
+    console.log('Admin: initializeAdmin called with user:', user ? { id: user.id, email: user.email } : null);
+    if (!isMounted.current) {
+      console.log('Admin: component unmounted, skipping');
+      return;
+    }
 
     if (!user) {
+      console.log('Admin: no user, setting not admin');
       setUser(null);
       setIsAdmin(false);
       finishAuthCheck();
@@ -32,41 +37,73 @@ export default function Admin() {
     setLoading(true);
     setAuthChecked(false);
 
-    const isOwner = user.email === 'gibsonkobia@gmail.com';
-    if (!isOwner) {
-      setIsAdmin(false);
-      finishAuthCheck('You do not have admin access with this account.');
-      return;
-    }
+    try {
+      console.log('Admin: querying profile for user id:', user.id);
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    setIsAdmin(true);
-    setUnauthorizedMessage('');
-    await fetchSubmissions();
-    finishAuthCheck();
+      if (error) {
+        console.error('Admin: profile query error:', error);
+        throw error;
+      }
+
+      console.log('Admin: profile query result:', profile);
+      const isOwner = user.email === 'gibsonkobia@gmail.com';
+      console.log('Admin: isOwner check:', isOwner, 'user email:', user.email);
+
+      if (!profile?.is_admin && !isOwner) {
+        console.log('Admin: not admin, showing error');
+        setIsAdmin(false);
+        finishAuthCheck('You do not have admin access with this account.');
+        return;
+      }
+
+      console.log('Admin: user is admin, fetching submissions');
+      setIsAdmin(true);
+      setUnauthorizedMessage('');
+      await fetchSubmissions();
+      console.log('Admin: fetchSubmissions completed');
+      finishAuthCheck();
+    } catch (err) {
+      console.error('Admin: Error checking admin status:', err);
+      setIsAdmin(false);
+      finishAuthCheck('Unable to verify admin access. Please try again later.');
+    }
   };
 
   useEffect(() => {
+    console.log('Admin: useEffect triggered');
     const loadSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Admin: loading session');
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) console.error('Admin: getSession error:', error);
+      console.log('Admin: session loaded:', session ? { user: { id: session.user.id, email: session.user.email } } : null);
       await initializeAdmin(session?.user ?? null);
     };
 
     loadSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log('Admin: auth state change:', event, session ? { user: { id: session.user.id, email: session.user.email } } : null);
         await initializeAdmin(session?.user ?? null);
       }
     );
 
     return () => {
+      console.log('Admin: cleanup');
       isMounted.current = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const fetchSubmissions = async () => {
+    console.log('Admin: fetchSubmissions started');
     try {
+      console.log('Admin: fetching connections and requests');
       const [connectionsResponse, requestsResponse] = await Promise.all([
         supabase
           .from('platform_connections')
@@ -78,11 +115,13 @@ export default function Admin() {
           .order('created_at', { ascending: false }),
       ]);
 
+      console.log('Admin: connections response:', { error: connectionsResponse.error, count: connectionsResponse.data?.length });
       if (connectionsResponse.error) {
-        console.error('Error loading authenticated submissions:', connectionsResponse.error);
+        console.error('Admin: Error loading authenticated submissions:', connectionsResponse.error);
       }
+      console.log('Admin: requests response:', { error: requestsResponse.error, count: requestsResponse.data?.length });
       if (requestsResponse.error) {
-        console.error('Error loading public requests:', requestsResponse.error);
+        console.error('Admin: Error loading public requests:', requestsResponse.error);
       }
 
       const connections = connectionsResponse.data || [];
@@ -109,10 +148,12 @@ export default function Admin() {
         })),
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
+      console.log('Admin: merged rows count:', mergedRows.length);
       setRows(mergedRows);
     } catch (err) {
-      console.error('Error loading admin submissions:', err);
+      console.error('Admin: Error loading admin submissions:', err);
     } finally {
+      console.log('Admin: fetchSubmissions finally, setting loading false');
       if (isMounted.current) {
         setLoading(false);
       }
@@ -120,6 +161,7 @@ export default function Admin() {
   };
 
   if (loading) {
+    console.log('Admin: rendering loading spinner');
     return (
       <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center text-white">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
@@ -128,11 +170,16 @@ export default function Admin() {
   }
 
   if (!isAdmin && authChecked) {
+    console.log('Admin: rendering Connect with error:', unauthorizedMessage);
     return <Connect externalError={unauthorizedMessage} />;
   }
 
-  if (!isAdmin) return null;
+  if (!isAdmin) {
+    console.log('Admin: not admin, rendering null');
+    return null;
+  }
 
+  console.log('Admin: rendering admin page');
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
       <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -145,7 +192,9 @@ export default function Admin() {
           </div>
           <button 
             onClick={async () => {
+              console.log('Admin: sign out clicked');
               await supabase.auth.signOut();
+              console.log('Admin: sign out completed, reloading');
               window.location.reload();
             }}
             className="text-sm text-slate-400 hover:text-white underline underline-offset-4"
