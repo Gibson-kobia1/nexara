@@ -11,73 +11,65 @@ export default function Admin() {
   const [authChecked, setAuthChecked] = useState(false);
   const [unauthorizedMessage, setUnauthorizedMessage] = useState('');
 
-  useEffect(() => {
-    const finishAuthCheck = (message = '') => {
-      if (!isMounted.current) return;
-      setAuthChecked(true);
-      setLoading(false);
-      setUnauthorizedMessage(message);
-    };
+  const finishAuthCheck = (message = '') => {
+    if (!isMounted.current) return;
+    setAuthChecked(true);
+    setLoading(false);
+    setUnauthorizedMessage(message);
+  };
 
-    const checkAdmin = async (user: any) => {
-      if (!isMounted.current) return;
-      setUser(user);
-      setLoading(true);
+  const initializeAdmin = async (user: any) => {
+    if (!isMounted.current) return;
 
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .maybeSingle();
+    if (!user) {
+      setUser(null);
+      setIsAdmin(false);
+      finishAuthCheck();
+      return;
+    }
 
-        if (error) throw error;
+    setUser(user);
+    setLoading(true);
+    setAuthChecked(false);
 
-        const isOwner = user.email === 'gibsonkobia@gmail.com';
-        if (profile?.is_admin || isOwner) {
-          setIsAdmin(true);
-          setUnauthorizedMessage('');
-          await fetchSubmissions();
-        } else {
-          setIsAdmin(false);
-          finishAuthCheck('You do not have admin access with this account.');
-          return;
-        }
-      } catch (err) {
-        console.error('Error checking admin status:', err);
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      const isOwner = user.email === 'gibsonkobia@gmail.com';
+      if (!profile?.is_admin && !isOwner) {
         setIsAdmin(false);
-        finishAuthCheck('Unable to verify admin access. Please try again later.');
+        finishAuthCheck('You do not have admin access with this account.');
         return;
       }
 
+      setIsAdmin(true);
+      setUnauthorizedMessage('');
+      await fetchSubmissions();
       finishAuthCheck();
-    };
+    } catch (err) {
+      console.error('Error checking admin status:', err);
+      setIsAdmin(false);
+      finishAuthCheck('Unable to verify admin access. Please try again later.');
+    }
+  };
 
+  useEffect(() => {
     const loadSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user ?? null;
-
-      if (currentUser) {
-        await checkAdmin(currentUser);
-      } else {
-        setUser(null);
-        setIsAdmin(false);
-        finishAuthCheck();
-      }
+      await initializeAdmin(session?.user ?? null);
     };
 
     loadSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        const currentUser = session?.user ?? null;
-        if (currentUser) {
-          await checkAdmin(currentUser);
-        } else {
-          setUser(null);
-          setIsAdmin(false);
-          finishAuthCheck();
-        }
+        await initializeAdmin(session?.user ?? null);
       }
     );
 
