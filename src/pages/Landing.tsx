@@ -23,6 +23,18 @@ const colors = {
   glass: 'bg-[#171C22]/80 backdrop-blur-xl border border-[#222A33]/50',
 };
 
+const platformRoutes: Record<string, string> = {
+  Coinbase: '/connect/coinbase',
+  Noones: '/connect/noones',
+  Bybit: '/connect/bybit',
+};
+
+const platformTransitionLogo: Record<string, string> = {
+  Coinbase: '/logos/coinbase-v2-svgrepo-com.svg',
+  Noones: '/logos/noonesicon.png',
+  Bybit: '/logos/bybit-seeklogo.svg',
+};
+
 // --- REUSABLE UI COMPONENTS ---
 
 const Button = ({ children, variant = 'primary', className = '', icon, onClick, type = "button", disabled = false }: any) => {
@@ -496,19 +508,38 @@ const Toast = ({ message, onClose }: any) => (
 // --- MAIN PAGE ---
 export default function Landing() {
   const [toast, setToast] = useState('');
+  const [selectedPlatform, setSelectedPlatform] = useState<{ name: string; icon: string } | null>(null);
+  const [transitionPath, setTransitionPath] = useState('');
+  const [showTransition, setShowTransition] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!showTransition || !transitionPath) return;
+
+    const timer = window.setTimeout(() => {
+      setShowTransition(false);
+      navigate(transitionPath);
+    }, 850);
+
+    return () => window.clearTimeout(timer);
+  }, [showTransition, transitionPath, navigate]);
+
   const handleConnect = (platformName?: string) => {
-    if (platformName === 'Coinbase') {
-      navigate('/connect/coinbase');
-    } else if (platformName === 'Noones') {
-      navigate('/connect/noones');
-    } else if (platformName === 'Bybit') {
-      navigate('/connect/bybit');
-    } else {
-      const el = document.getElementById('integrations');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    if (showTransition) return;
+
+    const route = platformName ? platformRoutes[platformName] : '';
+    if (route) {
+      setSelectedPlatform({
+        name: platformName,
+        icon: platformTransitionLogo[platformName] || '/logos/coinbase-v2-svgrepo-com.svg',
+      });
+      setTransitionPath(route);
+      setShowTransition(true);
+      return;
     }
+
+    const el = document.getElementById('integrations');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
   const showToast = (msg: string) => {
@@ -524,6 +555,35 @@ export default function Landing() {
       <DeveloperSection showToast={showToast} />
       <CTA onConnect={() => handleConnect()} />
       <Footer showToast={showToast} />
+
+      <AnimatePresence>
+        {showTransition && selectedPlatform && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-[80] bg-[#050608]/95 backdrop-blur-sm flex items-center justify-center px-6 py-10 cursor-wait"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="w-full max-w-md rounded-[28px] border border-white/10 bg-[#0E1115]/95 p-8 text-center shadow-[0_40px_120px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+            >
+              <div className="mx-auto mb-8 w-24 h-24 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
+                <img src={selectedPlatform.icon} alt={`${selectedPlatform.name} logo`} className="max-w-full max-h-full object-contain" />
+              </div>
+              <p className="text-xs uppercase tracking-[0.35em] text-slate-500 mb-3">Preparing secure connection...</p>
+              <h2 className="text-2xl font-semibold text-white mb-2">Redirecting to {selectedPlatform.name}</h2>
+              <p className="text-sm text-slate-400 mb-6">A secure handoff is being prepared for your account.</p>
+              <div className="mx-auto w-12 h-12 rounded-full border border-white/10 border-t-white animate-spin" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <Toast message={toast} onClose={() => setToast('')} />
     </main>
   );
