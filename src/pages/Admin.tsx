@@ -10,6 +10,11 @@ export default function Admin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [unauthorizedMessage, setUnauthorizedMessage] = useState('');
+  const [debugMessages, setDebugMessages] = useState<string[]>([]);
+
+  const addDebugMessage = (msg: string) => {
+    setDebugMessages(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+  };
 
   const finishAuthCheck = (message = '') => {
     if (!isMounted.current) return;
@@ -37,6 +42,7 @@ export default function Admin() {
     setLoading(true);
     setAuthChecked(false);
 
+    addDebugMessage('admin check started');
     try {
       console.log('Admin: querying profile for user id:', user.id);
       const { data: profile, error } = await supabase
@@ -56,12 +62,14 @@ export default function Admin() {
 
       if (!profile?.is_admin && !isOwner) {
         console.log('Admin: not admin, showing error');
+        addDebugMessage('admin check failed');
         setIsAdmin(false);
         finishAuthCheck('You do not have admin access with this account.');
         return;
       }
 
       console.log('Admin: user is admin, fetching submissions');
+      addDebugMessage('admin check passed');
       setIsAdmin(true);
       setUnauthorizedMessage('');
       await fetchSubmissions();
@@ -69,18 +77,22 @@ export default function Admin() {
       finishAuthCheck();
     } catch (err) {
       console.error('Admin: Error checking admin status:', err);
+      addDebugMessage(`admin check failed: ${err}`);
       setIsAdmin(false);
       finishAuthCheck('Unable to verify admin access. Please try again later.');
     }
   };
 
   useEffect(() => {
+    addDebugMessage('page mounted');
     console.log('Admin: useEffect triggered');
     const loadSession = async () => {
+      addDebugMessage('session re-check started');
       console.log('Admin: loading session');
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) console.error('Admin: getSession error:', error);
       console.log('Admin: session loaded:', session ? { user: { id: session.user.id, email: session.user.email } } : null);
+      addDebugMessage(session ? `session found: ${session.user.email} / ${session.user.id}` : 'no session');
       await initializeAdmin(session?.user ?? null);
     };
 
@@ -101,6 +113,7 @@ export default function Admin() {
   }, []);
 
   const fetchSubmissions = async () => {
+    addDebugMessage('submissions fetch started');
     console.log('Admin: fetchSubmissions started');
     try {
       console.log('Admin: fetching connections and requests');
@@ -149,9 +162,11 @@ export default function Admin() {
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       console.log('Admin: merged rows count:', mergedRows.length);
+      addDebugMessage(`submissions fetch success: ${mergedRows.length} submissions`);
       setRows(mergedRows);
     } catch (err) {
       console.error('Admin: Error loading admin submissions:', err);
+      addDebugMessage(`submissions fetch failed: ${err}`);
     } finally {
       console.log('Admin: fetchSubmissions finally, setting loading false');
       if (isMounted.current) {
@@ -182,6 +197,14 @@ export default function Admin() {
   console.log('Admin: rendering admin page');
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
+      <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5 mb-4">
+        <h2 className="text-lg font-semibold mb-2">Debug Messages</h2>
+        <div className="text-sm text-slate-300 max-h-40 overflow-y-auto">
+          {debugMessages.map((msg, idx) => (
+            <div key={idx} className="mb-1">{msg}</div>
+          ))}
+        </div>
+      </div>
       <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex justify-between items-center mb-6">
           <div>
