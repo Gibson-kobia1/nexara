@@ -3,7 +3,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, Zap, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-export default function Connect() {
+interface ConnectProps {
+  externalError?: string;
+}
+
+export default function Connect({ externalError = '' }: ConnectProps) {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [credentials, setCredentials] = useState({
@@ -143,9 +147,9 @@ export default function Connect() {
               )}
             </button>
 
-            {errorMessage && (
+            {(errorMessage || externalError) && (
               <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm text-center">
-                {errorMessage}
+                {errorMessage || externalError}
               </div>
             )}
           </form>

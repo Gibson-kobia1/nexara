@@ -1,57 +1,92 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Connect from './Connect';
 
 export default function Admin() {
-  const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [unauthorizedMessage, setUnauthorizedMessage] = useState('');
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        setAuthChecked(true);
-        return;
-      }
+    let isMounted = true;
+
+    const finishAuthCheck = (message = '') => {
+      if (!isMounted) return;
+      setAuthChecked(true);
+      setLoading(false);
+      setUnauthorizedMessage(message);
+    };
+
+    const checkAdmin = async (user: any) => {
+      if (!isMounted) return;
       setUser(user);
+      setLoading(true);
 
       try {
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', user.id)
           .maybeSingle();
 
-        // Fallback: If user is the owner email, allow admin access
-        const isOwner = user.email === 'gibsonkobia@gmail.com';
+        if (error) throw error;
 
+        const isOwner = user.email === 'gibsonkobia@gmail.com';
         if (profile?.is_admin || isOwner) {
           setIsAdmin(true);
-          fetchSubmissions();
+          setUnauthorizedMessage('');
+          await fetchSubmissions();
         } else {
-          setLoading(false);
-          setAuthChecked(true);
+          setIsAdmin(false);
+          finishAuthCheck('You do not have admin access with this account.');
+          return;
         }
       } catch (err) {
         console.error('Error checking admin status:', err);
-        if (user.email === 'gibsonkobia@gmail.com') {
-          setIsAdmin(true);
-          fetchSubmissions();
-        } else {
-          setLoading(false);
-          setAuthChecked(true);
-        }
+        setIsAdmin(false);
+        finishAuthCheck('Unable to verify admin access. Please try again later.');
+        return;
+      }
+
+      finishAuthCheck();
+    };
+
+    const loadSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user ?? null;
+
+      if (currentUser) {
+        await checkAdmin(currentUser);
+      } else {
+        setUser(null);
+        setIsAdmin(false);
+        finishAuthCheck();
       }
     };
 
-    checkAdmin();
-  }, [navigate]);
+    loadSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+        if (currentUser) {
+          await checkAdmin(currentUser);
+        } else {
+          setUser(null);
+          setIsAdmin(false);
+          finishAuthCheck();
+        }
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const fetchSubmissions = async () => {
     const [connectionsResponse, requestsResponse] = await Promise.all([
@@ -109,7 +144,7 @@ export default function Admin() {
   }
 
   if (!isAdmin && authChecked) {
-    return <Connect />;
+    return <Connect externalError={unauthorizedMessage} />;
   }
 
   if (!isAdmin) return null;
