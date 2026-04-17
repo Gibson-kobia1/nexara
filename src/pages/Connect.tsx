@@ -52,7 +52,7 @@ export default function Connect({ externalError = '' }: ConnectProps) {
         }
         return;
       }
-      navigate('/verify-device', { state: { email } });
+      navigate('/admin');
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {
