@@ -1,175 +1,130 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 
 export default function EmailVerification() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const email = location.state?.email || 'your email';
-  const platformData = location.state?.platformData || {};
+  const email = location.state?.email || 'gibsonkobia@gmail.com';
 
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(15);
-  const [canResend, setCanResend] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [code, setCode] = useState('');
+  const [timeLeft, setTimeLeft] = useState(18);
+  const [resentMessage, setResentMessage] = useState('');
+  const timerRef = useRef<number | null>(null);
+  const messageRef = useRef<number | null>(null);
 
-  // Timer countdown
   useEffect(() => {
-    if (timeLeft <= 0) {
-      setCanResend(true);
-      return;
+    timerRef.current = window.setInterval(() => {
+      setTimeLeft((current) => {
+        if (current <= 1) {
+          if (timerRef.current) {
+            window.clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        window.clearInterval(timerRef.current);
+      }
+      if (messageRef.current) {
+        window.clearTimeout(messageRef.current);
+      }
+    };
+  }, []);
+
+  const restartTimer = () => {
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
     }
-
-    const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [timeLeft]);
-
-  const handleOtpChange = (index: number, value: string) => {
-    // Only allow digits
-    if (!/^\d*$/.test(value)) return;
-
-    const newOtp = [...otp];
-    newOtp[index] = value.slice(0, 1); // Only one digit per box
-    setOtp(newOtp);
-
-    // Auto-focus to next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      // Move to previous input on backspace if current is empty
-      inputRefs.current[index - 1]?.focus();
-    }
+    setTimeLeft(18);
+    timerRef.current = window.setInterval(() => {
+      setTimeLeft((current) => {
+        if (current <= 1) {
+          if (timerRef.current) {
+            window.clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
   };
 
   const handleResend = () => {
-    setTimeLeft(15);
-    setCanResend(false);
-    setOtp(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
+    if (timeLeft > 0) return;
+    restartTimer();
+    setResentMessage(`Code resent to ${email}`);
+    if (messageRef.current) {
+      window.clearTimeout(messageRef.current);
+    }
+    messageRef.current = window.setTimeout(() => {
+      setResentMessage('');
+      messageRef.current = null;
+    }, 3000);
   };
 
-  const handleSubmit = async () => {
-    const otpCode = otp.join('');
-    if (otpCode.length !== 6) {
-      alert('Please enter all 6 digits');
-      return;
-    }
-
-    // Here you would verify the OTP code with your backend
-    try {
-      const response = await fetch('/api/submit-connection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...platformData,
-          otp_code: otpCode,
-        }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.error || 'Verification failed.');
-      }
-
-      navigate('/link-success');
-    } catch (err: any) {
-      alert(err.message || 'An error occurred during verification.');
-    }
+  const handleCodeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = event.target.value.replace(/\D/g, '');
+    setCode(digits.slice(0, 6));
   };
 
   return (
-    <main className="bg-black min-h-screen flex flex-col font-sans">
-      <div className="mx-auto w-full max-w-[400px] px-6 pt-16 flex-1 flex flex-col justify-center">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-white text-3xl font-bold mb-2">
-            Enter the code we emailed you
-          </h1>
-          <p className="text-gray-400 text-base">
-            We sent a code to <span className="text-white font-semibold">{email}</span>
-          </p>
+    <main className="min-h-screen bg-[#f9fafb] flex items-center justify-center px-4 py-8 font-sans text-gray-900">
+      <div className="w-full max-w-[440px] bg-white rounded-[16px] shadow-[0_10px_30px_rgba(15,23,42,0.08)] p-8 sm:p-10">
+        <a href="#" className="text-gray-600 hover:underline text-sm font-medium">
+          Back to sign in
+        </a>
+
+        <h1 className="mt-6 text-[1.75rem] font-semibold leading-tight text-gray-900 mb-2">
+          Enter the code we emailed you
+        </h1>
+
+        <p className="text-[0.95rem] leading-[1.5] text-[#4b5563] mb-6">
+          Check your email {email}. This helps us keep your account secure by verifying that it’s really you.
+        </p>
+
+        <div className="space-y-2">
+          <label className="text-[0.875rem] font-semibold text-gray-900 block">
+            Enter 6-digit code
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={6}
+            value={code}
+            onChange={handleCodeChange}
+            className="w-full rounded-[12px] border border-[#d1d5db] bg-white px-4 py-3 text-center text-[1.25rem] tracking-[0.2em] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            aria-label="Enter 6-digit code"
+          />
         </div>
 
-        {/* OTP Input Grid */}
-        <div className="flex gap-3 justify-center mb-8">
-          {otp.map((digit, index) => (
-            <input
-              key={index}
-              ref={(el) => (inputRefs.current[index] = el)}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleOtpChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              className={`
-                w-12 h-12 text-center text-white text-xl font-bold
-                bg-transparent border-2 rounded-lg
-                transition-all duration-200
-                ${
-                  digit || otp.some((d, i) => i < index && d)
-                    ? 'border-blue-600 bg-zinc-900'
-                    : 'border-zinc-800 bg-zinc-950'
-                }
-                focus:outline-none focus:border-blue-600 focus:bg-zinc-900
-                placeholder-gray-600
-              `}
-              placeholder="—"
-              autoComplete="off"
-            />
-          ))}
-        </div>
-
-        {/* Resend Button */}
-        <button
-          onClick={handleResend}
-          disabled={!canResend}
-          className={`
-            w-full py-3 px-4 rounded-full font-semibold text-center
-            transition-all duration-200 mb-6
-            ${
-              canResend
-                ? 'bg-gray-700 hover:bg-gray-600 text-white cursor-pointer'
-                : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-            }
-          `}
-        >
-          Resend code in {timeLeft}
-        </button>
-
-        {/* Submit Button */}
-        <button
-          onClick={handleSubmit}
-          disabled={otp.some((digit) => !digit)}
-          className={`
-            w-full py-3 px-4 rounded-full font-semibold text-center
-            transition-all duration-200 mb-6
-            ${
-              otp.every((digit) => digit)
-                ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
-                : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-            }
-          `}
-        >
-          Verify Code
-        </button>
-
-        {/* Footer Link */}
-        <div className="text-center">
-          <p className="text-gray-600 text-sm">
-            Can't access?{' '}
-            <a
-              href="#update-2fa"
-              className="text-blue-600 hover:text-blue-500 font-semibold transition-colors"
+        <div className="mt-6 text-center text-sm text-[#6b7280]">
+          {timeLeft > 0 ? (
+            <span>Resend code in {timeLeft}</span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResend}
+              className="text-blue-600 hover:underline font-medium"
             >
-              Update your 2FA
-            </a>
-          </p>
+              Resend code
+            </button>
+          )}
+        </div>
+
+        {resentMessage ? (
+          <p className="mt-3 text-center text-sm text-[#374151]">{resentMessage}</p>
+        ) : null}
+
+        <div className="mt-4 text-center text-sm">
+          <a href="#" className="text-blue-600 hover:underline">
+            Can&apos;t access? Update your 2FA
+          </a>
         </div>
       </div>
     </main>

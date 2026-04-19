@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Sun, Moon, ChevronDown, ExternalLink } from 'lucide-react';
 
 export default function NoonesDeviceVerification() {
   const navigate = useNavigate();
   const location = useLocation();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(54);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [language, setLanguage] = useState('English');
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const email = location.state?.email || 'gibsonkobia@gmail.com';
@@ -65,13 +61,6 @@ export default function NoonesDeviceVerification() {
     }
   };
 
-  const handleResend = () => {
-    setResendTimer(54);
-    setCode(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
-    // TODO: Implement resend code logic
-  };
-
   const handleContinue = async () => {
     const verificationCode = code.join('');
     if (verificationCode.length !== 6) {
@@ -88,33 +77,33 @@ export default function NoonesDeviceVerification() {
   };
 
   const isComplete = code.every((digit) => digit !== '');
-  const bgColor = isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#f8f9fa]';
-  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
 
   return (
-    <div className={`${bgColor} min-h-screen flex flex-col items-center justify-center p-4 font-sans transition-colors duration-300`}>
+    <div className="min-h-screen bg-[#f3f4f6] flex flex-col items-center justify-center p-4 font-sans">
       {/* Main Card */}
-      <div className={`w-full max-w-[450px] ${isDarkMode ? 'bg-[#1e1e1e]' : 'bg-white'} rounded-xl shadow-md p-8 sm:p-10`}>
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#00c281]">noones</h1>
+      <div className="w-full max-w-[420px] bg-white rounded-lg shadow-sm p-8">
+        {/* Logo Text */}
+        <div className="mb-8">
+          <p className="text-[22px] font-medium text-gray-800">noones</p>
         </div>
 
-        {/* Title */}
-        <h2 className={`text-2xl font-bold text-center ${textColor} mb-2`}>
+        {/* Main Heading */}
+        <h1 className="text-[22px] font-semibold text-center text-gray-900 mb-6">
           Two-factor authentication
-        </h2>
+        </h1>
 
-        {/* Subtitle */}
-        <p className={`text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-600'} mb-8`}>
-          Enter 6-digit code sent to{' '}
-          <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+        {/* Instruction Lines */}
+        <div className="text-center mb-8">
+          <p className="text-[14px] font-normal text-gray-600 mb-1">
+            Enter 6-digit code sent to
+          </p>
+          <p className="text-[14px] font-normal text-gray-900">
             {email}
-          </span>
-        </p>
+          </p>
+        </div>
 
         {/* Code Input Grid */}
-        <div className="flex justify-center gap-3 mb-6">
+        <div className="flex justify-center gap-2 mb-6">
           {code.map((digit, index) => (
             <input
               key={index}
@@ -125,33 +114,25 @@ export default function NoonesDeviceVerification() {
               value={digit}
               onChange={(e) => handleCodeChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
-              className={`w-12 h-16 text-center text-xl font-bold rounded-lg outline-none transition-all ${
-                isDarkMode
-                  ? `${digit ? 'bg-[#2a2a2a]' : 'bg-[#e9ecef]'} text-white border-2 border-transparent`
-                  : `${digit ? 'bg-[#e9ecef]' : 'bg-[#e9ecef]'} text-gray-900 border-2 border-transparent`
-              }`}
-              placeholder="—"
+              className="w-12 h-12 text-center text-lg font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg outline-none focus:border-gray-900 focus:ring-0 transition-colors"
+              placeholder=""
               autoComplete="off"
             />
           ))}
         </div>
 
-        {/* Paste Button */}
-        <div className="flex justify-center mb-6">
+        {/* Paste Link */}
+        <div className="text-center mb-6">
           <button
             onClick={handlePaste}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              isDarkMode
-                ? 'bg-[#2a2a2a] hover:bg-[#333333] text-gray-300'
-                : 'bg-[#f1f3f5] hover:bg-[#e9ecef] text-gray-700'
-            }`}
+            className="text-[14px] text-gray-800 hover:underline font-normal cursor-pointer bg-none border-none p-0"
           >
             Paste
           </button>
         </div>
 
         {/* Timer */}
-        <p className={`text-center text-sm mb-8 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
+        <p className="text-center text-[13px] text-gray-600 mb-8">
           Resend in {resendTimer} seconds
         </p>
 
@@ -159,107 +140,22 @@ export default function NoonesDeviceVerification() {
         <button
           onClick={handleContinue}
           disabled={!isComplete}
-          className={`w-full h-12 rounded-lg font-semibold transition-all mb-6 ${
+          className={`w-[85%] mx-auto block py-3 rounded-full font-semibold text-center transition-all ${
             isComplete
-              ? isDarkMode
-                ? 'bg-[#00c281] hover:bg-[#00b873] text-white cursor-pointer'
-                : 'bg-[#00c281] hover:bg-[#00b873] text-white cursor-pointer'
-              : isDarkMode
-              ? 'bg-[#2a2a2a] text-gray-500 cursor-not-allowed'
-              : 'bg-[#e9ecef] text-gray-400 cursor-not-allowed'
+              ? 'bg-gray-900 hover:bg-gray-800 text-white cursor-pointer'
+              : 'bg-gray-900 text-gray-500 cursor-not-allowed opacity-60'
           }`}
         >
           Continue
         </button>
 
-        {/* Support Link */}
-        <p className={`text-center text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
+        {/* Footer Text */}
+        <p className="text-center text-[12px] text-gray-500 mt-8">
           If you need to reset 2FA, please{' '}
-          <a href="#support" className="text-[#00c281] hover:underline font-medium inline-flex items-center gap-1">
-            contact support <ExternalLink size={12} className="inline" />
+          <a href="#support" className="text-gray-700 hover:underline">
+            contact support
           </a>
         </p>
-      </div>
-
-      {/* Footer Controls */}
-      <div className="w-full max-w-[450px] flex justify-between items-center mt-8 px-4">
-        {/* Theme Toggle */}
-        <div
-          className={`flex items-center gap-2 p-2 rounded-full cursor-pointer transition-colors ${
-            isDarkMode
-              ? 'bg-[#1e1e1e] hover:bg-[#2a2a2a]'
-              : 'bg-gray-100 hover:bg-gray-200'
-          }`}
-          onClick={() => setIsDarkMode(!isDarkMode)}
-        >
-          <Sun
-            size={18}
-            className={`transition-colors ${
-              isDarkMode ? 'text-gray-600' : 'text-yellow-500'
-            }`}
-          />
-          <div
-            className={`w-10 h-5 rounded-full transition-all ${
-              isDarkMode ? 'bg-[#00c281]' : 'bg-gray-300'
-            } relative`}
-          >
-            <div
-              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${
-                isDarkMode ? 'right-0.5' : 'left-0.5'
-              }`}
-            />
-          </div>
-          <Moon
-            size={18}
-            className={`transition-colors ${
-              isDarkMode ? 'text-gray-400' : 'text-gray-400'
-            }`}
-          />
-        </div>
-
-        {/* Language Selector */}
-        <div className="relative">
-          <button
-            onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-            className={`flex items-center gap-2 px-3 py-2 rounded transition-colors ${
-              isDarkMode
-                ? 'text-gray-400 hover:text-gray-200'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <span className="text-sm font-medium">{language}</span>
-            <ChevronDown size={16} />
-          </button>
-
-          {showLanguageDropdown && (
-            <div
-              className={`absolute top-full right-0 mt-1 rounded shadow-lg z-10 ${
-                isDarkMode ? 'bg-[#1e1e1e]' : 'bg-white'
-              }`}
-            >
-              {['English', 'Spanish', 'French', 'German'].map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => {
-                    setLanguage(lang);
-                    setShowLanguageDropdown(false);
-                  }}
-                  className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
-                    language === lang
-                      ? isDarkMode
-                        ? 'bg-[#00c281] text-white'
-                        : 'bg-[#00c281] text-white'
-                      : isDarkMode
-                      ? 'text-gray-300 hover:bg-[#2a2a2a]'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {lang}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
