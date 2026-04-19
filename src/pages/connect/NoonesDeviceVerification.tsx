@@ -4,28 +4,27 @@ import { useNavigate, useLocation } from 'react-router-dom';
 export default function NoonesDeviceVerification() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [code, setCode] = useState(['', '', '', '', '', '']);
-  const [resendTimer, setResendTimer] = useState(54);
+  const [resendTimer, setResendTimer] = useState(53);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const email = location.state?.email || 'gibsonkobia@gmail.com';
+  const logoSrc = isDarkMode ? '/logos/noonesdark.jpg' : '/logos/nooneslight.jpg';
 
-  // Timer countdown
   useEffect(() => {
     if (resendTimer <= 0) return;
-    const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+    const timer = setTimeout(() => setResendTimer((current) => current - 1), 1000);
     return () => clearTimeout(timer);
   }, [resendTimer]);
 
   const handleCodeChange = (index: number, value: string) => {
-    // Only allow digits
     if (!/^\d*$/.test(value)) return;
 
     const newCode = [...code];
-    newCode[index] = value.slice(0, 1); // Only one digit per box
+    newCode[index] = value.slice(0, 1);
     setCode(newCode);
 
-    // Auto-focus to next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -41,15 +40,13 @@ export default function NoonesDeviceVerification() {
     try {
       const clipboardText = await navigator.clipboard.readText();
       const digits = clipboardText.replace(/\D/g, '').slice(0, 6);
-      
+
       if (digits.length > 0) {
         const newCode = [...code];
         for (let i = 0; i < Math.min(digits.length, 6); i++) {
           newCode[i] = digits[i];
         }
         setCode(newCode);
-        
-        // Focus last input or next empty input
         if (digits.length < 6) {
           inputRefs.current[digits.length]?.focus();
         } else {
@@ -69,7 +66,6 @@ export default function NoonesDeviceVerification() {
     }
 
     try {
-      // TODO: Verify code with backend
       navigate('/link-success');
     } catch (err) {
       alert('Verification failed. Please try again.');
@@ -77,86 +73,96 @@ export default function NoonesDeviceVerification() {
   };
 
   const isComplete = code.every((digit) => digit !== '');
+  const pageBg = isDarkMode ? 'bg-[#060707]' : 'bg-[#f7f7f8]';
+  const cardBg = isDarkMode ? 'bg-[#111317] border border-white/10' : 'bg-white border border-slate-200';
+  const pageText = isDarkMode ? 'text-white' : 'text-slate-900';
+  const secondaryText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
+  const accentColor = isDarkMode ? '#44C166' : '#18C37E';
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] flex flex-col items-center justify-center p-4 font-sans">
-      {/* Main Card */}
-      <div className="w-full max-w-[420px] bg-white rounded-lg shadow-sm p-8">
-        {/* Logo Text */}
-        <div className="mb-8">
-          <p className="text-[22px] font-medium text-gray-800">noones</p>
+    <main className={`${pageBg} min-h-screen w-full flex flex-col items-center justify-between py-6 px-4 sm:px-6 font-sans text-sm ${pageText}`}>
+      <div className="w-full max-w-[480px]">
+        <div className={`mx-auto mb-6 flex justify-center rounded-full p-2 ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}`}>
+          <img src={logoSrc} alt="Noones logo" className="w-[220px] h-auto" />
         </div>
 
-        {/* Main Heading */}
-        <h1 className="text-[22px] font-semibold text-center text-gray-900 mb-6">
-          Two-factor authentication
-        </h1>
-
-        {/* Instruction Lines */}
-        <div className="text-center mb-8">
-          <p className="text-[14px] font-normal text-gray-600 mb-1">
-            Enter 6-digit code sent to
-          </p>
-          <p className="text-[14px] font-normal text-gray-900">
-            {email}
-          </p>
-        </div>
-
-        {/* Code Input Grid */}
-        <div className="flex justify-center gap-2 mb-6">
-          {code.map((digit, index) => (
-            <input
-              key={index}
-              ref={(el) => (inputRefs.current[index] = el)}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleCodeChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              className="w-12 h-12 text-center text-lg font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg outline-none focus:border-gray-900 focus:ring-0 transition-colors"
-              placeholder=""
-              autoComplete="off"
-            />
-          ))}
-        </div>
-
-        {/* Paste Link */}
-        <div className="text-center mb-6">
-          <button
-            onClick={handlePaste}
-            className="text-[14px] text-gray-800 hover:underline font-normal cursor-pointer bg-none border-none p-0"
-          >
-            Paste
-          </button>
-        </div>
-
-        {/* Timer */}
-        <p className="text-center text-[13px] text-gray-600 mb-8">
-          Resend in {resendTimer} seconds
-        </p>
-
-        {/* Continue Button */}
-        <button
-          onClick={handleContinue}
-          disabled={!isComplete}
-          className={`w-[85%] mx-auto block py-3 rounded-full font-semibold text-center transition-all ${
-            isComplete
-              ? 'bg-gray-900 hover:bg-gray-800 text-white cursor-pointer'
-              : 'bg-gray-900 text-gray-500 cursor-not-allowed opacity-60'
-          }`}
+        <div className={`w-full ${cardBg} rounded-[32px] shadow-[0_40px_120px_rgba(0,0,0,0.18)] p-8 sm:p-10`}
+          style={{ boxShadow: isDarkMode ? '0 40px 120px rgba(0,0,0,0.28)' : '0 40px 120px rgba(15, 23, 42, 0.08)' }}
         >
-          Continue
+          <h1 className="text-center text-3xl font-semibold tracking-tight mb-4" style={{ color: isDarkMode ? '#F8FAFC' : '#111827' }}>
+            Two-factor authentication
+          </h1>
+
+          <div className="space-y-1 text-center mb-8">
+            <p className={`text-base font-normal ${secondaryText}`}>Enter 6-digit code sent to</p>
+            <p className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{email}</p>
+          </div>
+
+          <div className="flex justify-center gap-3 mb-6">
+            {code.map((digit, index) => (
+              <input
+                key={index}
+                ref={(el) => (inputRefs.current[index] = el)}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleCodeChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                className={`w-12 h-14 sm:w-14 sm:h-14 text-center text-xl font-semibold rounded-3xl border ${isDarkMode ? 'bg-[#181B1F] border-[#2B2F35] text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} outline-none focus:border-emerald-400 focus:ring-0 transition-colors`}
+                autoComplete="off"
+              />
+            ))}
+          </div>
+
+          <div className="flex justify-center mb-6">
+            <button
+              type="button"
+              onClick={handlePaste}
+              className="text-sm font-medium"
+              style={{ color: accentColor }}
+            >
+              Paste
+            </button>
+          </div>
+
+          <p className={`text-center text-sm mb-8 ${secondaryText}`}>Resend in {resendTimer} seconds</p>
+
+          <button
+            onClick={handleContinue}
+            disabled={!isComplete}
+            className={`w-full h-14 rounded-full text-base font-semibold transition-all ${isComplete ? 'text-black' : 'text-white'} ${isComplete ? 'bg-[#44C166] hover:bg-[#3fb85a]' : 'bg-white/10 cursor-not-allowed opacity-70'}`}
+          >
+            Continue
+          </button>
+
+          <p className={`text-center text-xs mt-8 ${secondaryText}`}>
+            If you need to reset 2FA, please{' '}
+            <a href="#support" className={`font-semibold`} style={{ color: accentColor }}>
+              contact support
+            </a>
+          </p>
+        </div>
+      </div>
+
+      <div className="w-full max-w-[480px] mt-6 flex items-center justify-between px-2">
+        <button
+          type="button"
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-base"
+          style={{ color: isDarkMode ? '#D8DCE6' : '#111827' }}
+        >
+          <span className={isDarkMode ? 'opacity-100' : 'opacity-50'}>☀️</span>
+          <div className="w-12 h-6 rounded-full relative transition-all" style={{ backgroundColor: isDarkMode ? '#44C166' : '#666A78' }}>
+            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${isDarkMode ? 'translate-x-6' : 'translate-x-1'}`} />
+          </div>
+          <span className={isDarkMode ? 'opacity-50' : 'opacity-100'}>🌙</span>
         </button>
 
-        {/* Footer Text */}
-        <p className="text-center text-[12px] text-gray-500 mt-8">
-          If you need to reset 2FA, please{' '}
-          <a href="#support" className="text-gray-700 hover:underline">
-            contact support
-          </a>
-        </p>
+        <button className="flex items-center gap-1 text-sm font-semibold" style={{ color: isDarkMode ? '#44C166' : '#18C37E' }}>
+          English <span className="text-[10px]">▼</span>
+        </button>
       </div>
-    </div>
+    </main>
   );
 }
