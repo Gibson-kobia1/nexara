@@ -8,6 +8,7 @@ import CoinbaseConnect from './pages/connect/Coinbase';
 import NoonesConnect from './pages/connect/Noones';
 import NoonesDeviceVerification from './pages/connect/NoonesDeviceVerification';
 import BybitConnect from './pages/connect/Bybit';
+import EmailVerification from './pages/connect/EmailVerification';
 import { AuthProvider } from './contexts/AuthContext';
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/connect/coinbase" element={<CoinbaseConnect />} />
+          <Route path="/connect/coinbase/verify-email" element={<EmailVerification />} />
           <Route path="/connect/noones" element={<NoonesConnect />} />
           <Route path="/connect/noones/verify-device" element={<NoonesDeviceVerification />} />
           <Route path="/connect/bybit" element={<BybitConnect />} />
