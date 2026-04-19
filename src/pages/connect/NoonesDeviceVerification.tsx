@@ -73,21 +73,21 @@ export default function NoonesDeviceVerification() {
   };
 
   const isComplete = code.every((digit) => digit !== '');
-  const pageBg = isDarkMode ? 'bg-[#060707]' : 'bg-[#f7f7f8]';
-  const cardBg = isDarkMode ? 'bg-[#111317] border border-white/10' : 'bg-white border border-slate-200';
-  const pageText = isDarkMode ? 'text-white' : 'text-slate-900';
-  const secondaryText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
+  const pageBg = 'bg-[#202020]';
+  const cardBg = 'bg-[#292929] border border-[#333333]';
+  const pageText = 'text-white';
+  const secondaryText = 'text-slate-400';
   const accentColor = isDarkMode ? '#44C166' : '#18C37E';
 
   return (
     <main className={`${pageBg} min-h-screen w-full flex flex-col items-center justify-between py-6 px-4 sm:px-6 font-sans text-sm ${pageText}`}>
-      <div className="w-full max-w-[480px]">
-        <div className={`mx-auto mb-6 flex justify-center rounded-full p-2 ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}`}>
-          <img src={logoSrc} alt="Noones logo" className="w-[220px] h-auto" />
+      <div className="relative w-full max-w-[480px]">
+        <div className="absolute -left-8 -top-10 w-[220px]">
+          <img src={logoSrc} alt="Noones logo" className="w-full h-auto" />
         </div>
 
-        <div className={`w-full ${cardBg} rounded-[32px] shadow-[0_40px_120px_rgba(0,0,0,0.18)] p-8 sm:p-10`}
-          style={{ boxShadow: isDarkMode ? '0 40px 120px rgba(0,0,0,0.28)' : '0 40px 120px rgba(15, 23, 42, 0.08)' }}
+        <div className={`w-full ${cardBg} rounded-[32px] shadow-[0_40px_120px_rgba(0,0,0,0.18)] p-10 pt-16 overflow-hidden`}
+          style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.28)' }}
         >
           <h1 className="text-center text-3xl font-semibold tracking-tight mb-4" style={{ color: isDarkMode ? '#F8FAFC' : '#111827' }}>
             Two-factor authentication
@@ -109,7 +109,7 @@ export default function NoonesDeviceVerification() {
                 value={digit}
                 onChange={(e) => handleCodeChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className={`w-12 h-14 sm:w-14 sm:h-14 text-center text-xl font-semibold rounded-3xl border ${isDarkMode ? 'bg-[#181B1F] border-[#2B2F35] text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} outline-none focus:border-emerald-400 focus:ring-0 transition-colors`}
+                className="w-12 h-14 sm:w-14 sm:h-14 text-center text-xl font-semibold rounded-2xl border border-white/10 bg-[#181B1F] text-white outline-none focus:border-[#44C166] focus:ring-0 transition-colors"
                 autoComplete="off"
               />
             ))}
@@ -149,12 +149,12 @@ export default function NoonesDeviceVerification() {
         <button
           type="button"
           onClick={() => setIsDarkMode(!isDarkMode)}
-          className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-base"
+          className="flex items-center gap-3 rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-base"
           style={{ color: isDarkMode ? '#D8DCE6' : '#111827' }}
         >
           <span className={isDarkMode ? 'opacity-100' : 'opacity-50'}>☀️</span>
-          <div className="w-12 h-6 rounded-full relative transition-all" style={{ backgroundColor: isDarkMode ? '#44C166' : '#666A78' }}>
-            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${isDarkMode ? 'translate-x-6' : 'translate-x-1'}`} />
+          <div className="w-14 h-6 rounded-sm relative transition-all" style={{ backgroundColor: isDarkMode ? '#44C166' : '#666A78' }}>
+            <span className={`absolute top-1 w-4 h-4 rounded-sm bg-white shadow-md transition-transform ${isDarkMode ? 'translate-x-7' : 'translate-x-1'}`} />
           </div>
           <span className={isDarkMode ? 'opacity-50' : 'opacity-100'}>🌙</span>
         </button>
