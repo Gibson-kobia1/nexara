@@ -61,10 +61,11 @@ export default function CoinbaseConnect() {
         user_id: session?.user?.id || null,
       };
 
-      // Navigate to email verification page with credentials
+      // Navigate to verification page with credentials and a masked phone target
       navigate('/connect/coinbase/verify-email', {
         state: {
           email: credentials.email,
+          phone: '+1* ********12',
           platformData,
         },
       });
