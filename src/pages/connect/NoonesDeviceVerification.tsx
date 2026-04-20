@@ -81,12 +81,12 @@ export default function NoonesDeviceVerification() {
 
   return (
     <main className={`${pageBg} min-h-screen w-full flex flex-col items-center justify-center gap-8 py-10 px-4 sm:px-6 font-sans text-sm ${pageText}`}>
-      <div className="relative w-full max-w-[480px]">
-        <div className="absolute left-1/2 -top-6 w-[220px] -translate-x-1/2">
-          <img src={logoSrc} alt="Noones logo" className="w-full h-auto" />
-        </div>
+      <div className="w-[220px] flex justify-center">
+        <img src={logoSrc} alt="Noones logo" className="w-full h-auto" />
+      </div>
 
-        <div className={`w-full ${cardBg} rounded-[32px] shadow-[0_40px_120px_rgba(0,0,0,0.18)] p-10 pt-16 overflow-hidden`}
+      <div className="w-full max-w-[480px]">
+        <div className={`w-full ${cardBg} rounded-[32px] shadow-[0_40px_120px_rgba(0,0,0,0.18)] p-10 overflow-hidden`}
           style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.28)' }}
         >
           <h1 className="text-center text-3xl font-semibold tracking-tight mb-4" style={{ color: isDarkMode ? '#F8FAFC' : '#111827' }}>
