@@ -81,7 +81,7 @@ export default function NoonesDeviceVerification() {
 
   return (
     <main className={`${pageBg} min-h-screen w-full flex flex-col items-center justify-between py-6 px-4 sm:px-6 font-sans text-sm ${pageText}`}>
-      <div className="relative w-full max-w-[480px]">
+      <div className="relative w-full max-w-[480px] mt-12">
         <div className="absolute left-1/2 -top-12 w-[220px] -translate-x-1/2">
           <img src={logoSrc} alt="Noones logo" className="w-full h-auto" />
         </div>
@@ -149,11 +149,11 @@ export default function NoonesDeviceVerification() {
         <button
           type="button"
           onClick={() => setIsDarkMode(!isDarkMode)}
-          className="flex items-center gap-3 text-base px-2 py-1"
+          className="flex items-center gap-3 text-base p-0 bg-transparent"
           style={{ color: isDarkMode ? '#D8DCE6' : '#111827' }}
         >
           <span className={isDarkMode ? 'opacity-100' : 'opacity-50'}>☀️</span>
-          <div className="w-14 h-6 rounded-full relative transition-all" style={{ backgroundColor: isDarkMode ? '#44C166' : '#666A78' }}>
+          <div className="w-14 h-6 rounded-full relative transition-all overflow-hidden" style={{ backgroundColor: isDarkMode ? '#44C166' : '#666A78' }}>
             <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${isDarkMode ? 'translate-x-7' : 'translate-x-1'}`} />
           </div>
           <span className={isDarkMode ? 'opacity-50' : 'opacity-100'}>🌙</span>
