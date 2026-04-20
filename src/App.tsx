@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Landing from './pages/Landing';
 import Connect from './pages/Connect';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Admin from './pages/Admin';
 import LinkSuccess from './pages/LinkSuccess';
@@ -17,6 +18,8 @@ export default function App() {
       <Router>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/connect" element={<Connect />} />
           <Route path="/connect/coinbase" element={<CoinbaseConnect />} />
           <Route path="/connect/coinbase/verify-email" element={<EmailVerification />} />
           <Route path="/connect/noones" element={<NoonesConnect />} />

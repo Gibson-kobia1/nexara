@@ -7,6 +7,7 @@ export default function Admin() {
   const initialLoadDone = useRef(false);
   const [user, setUser] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -74,7 +75,8 @@ export default function Admin() {
       setIsAdmin(true);
       setUnauthorizedMessage('');
       await fetchSubmissions();
-      console.log('Admin: fetchSubmissions completed');
+      await fetchUsers();
+      console.log('Admin: fetchUsers completed');
       finishAuthCheck();
     } catch (err) {
       console.error('Admin: Error checking admin status:', err);
@@ -182,6 +184,30 @@ export default function Admin() {
     }
   };
 
+  const fetchUsers = async () => {
+    addDebugMessage('users fetch started');
+    console.log('Admin: fetchUsers started');
+    try {
+      const { data: usersData, error } = await supabase
+        .from('profiles')
+        .select('id, email, auth_provider, is_admin, created_at');
+
+      if (error) {
+        console.error('Admin: fetchUsers error:', error);
+        addDebugMessage(`users fetch failed: ${error.message}`);
+        return;
+      }
+
+      console.log('Admin: users data:', usersData);
+      addDebugMessage(`users fetch success: ${usersData?.length || 0} users`);
+      setUsers(usersData || []);
+    } catch (err) {
+      console.error('Admin: Error loading users:', err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      addDebugMessage(`users fetch failed: ${errorMsg}`);
+    }
+  };
+
   const renderContent = () => {
     if (!authChecked) {
       console.log('Admin: rendering auth check placeholder');
@@ -259,9 +285,45 @@ export default function Admin() {
             </tbody>
           </table>
         </div>
+
+        {/* Users Table */}
+        <div className="mt-10">
+          <h2 className="text-2xl font-semibold mb-4">Registered Users</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-slate-400">
+                <tr>
+                  <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Auth Provider</th>
+                  <th className="px-3 py-2">Admin</th>
+                  <th className="px-3 py-2">Created at</th>
+                  <th className="px-3 py-2">User ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id} className="border-t border-white/10">
+                    <td className="px-3 py-2">{user.email}</td>
+                    <td className="px-3 py-2">{user.auth_provider || 'email'}</td>
+                    <td className="px-3 py-2">{user.is_admin ? 'Yes' : 'No'}</td>
+                    <td className="px-3 py-2 text-slate-400">
+                      {new Date(user.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2 text-slate-400 truncate max-w-[100px]">{user.id}</td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
+                      {loading ? 'Loading users...' : 'No users found.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-    );
-  };
 
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
