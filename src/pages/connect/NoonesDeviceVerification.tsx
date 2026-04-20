@@ -80,9 +80,9 @@ export default function NoonesDeviceVerification() {
   const accentColor = isDarkMode ? '#44C166' : '#18C37E';
 
   return (
-    <main className={`${pageBg} min-h-screen w-full flex flex-col items-center justify-between py-6 px-4 sm:px-6 font-sans text-sm ${pageText}`}>
-      <div className="relative w-full max-w-[480px] mt-12">
-        <div className="absolute left-1/2 -top-12 w-[220px] -translate-x-1/2">
+    <main className={`${pageBg} min-h-screen w-full flex flex-col items-center justify-center gap-8 py-10 px-4 sm:px-6 font-sans text-sm ${pageText}`}>
+      <div className="relative w-full max-w-[480px]">
+        <div className="absolute left-1/2 -top-6 w-[220px] -translate-x-1/2">
           <img src={logoSrc} alt="Noones logo" className="w-full h-auto" />
         </div>
 
@@ -145,7 +145,7 @@ export default function NoonesDeviceVerification() {
         </div>
       </div>
 
-      <div className="w-full max-w-[480px] mt-6 flex items-center justify-between px-2">
+      <div className="w-full max-w-[480px] flex items-center justify-between px-2">
         <button
           type="button"
           onClick={() => setIsDarkMode(!isDarkMode)}
