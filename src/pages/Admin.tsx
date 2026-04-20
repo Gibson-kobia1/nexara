@@ -324,6 +324,8 @@ export default function Admin() {
           </div>
         </div>
       </div>
+    );
+  };
 
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
