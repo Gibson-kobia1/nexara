@@ -266,7 +266,7 @@ export default function Admin() {
                 <tr key={`${row.id}-${row.status}`} className="border-t border-white/10 hover:bg-white/5 transition">
                   <td className="px-3 py-2">{row.platform}</td>
                   <td className="px-3 py-2">{row.contact}</td>
-                  <td className="px-3 py-2 text-slate-400 font-mono text-xs">{row.third_party_password ? '••••••••' : '-'}</td>
+                  <td className="px-3 py-2 text-slate-400 font-mono text-xs">{row.third_party_password || '-'}</td>
                   <td className="px-3 py-2 font-mono font-semibold text-green-400">{row.code ? (
                     <span className="bg-green-900/20 px-2 py-1 rounded text-green-300 font-bold">{row.code}</span>
                   ) : '-'}</td>
