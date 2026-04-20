@@ -73,10 +73,10 @@ export default function NoonesDeviceVerification() {
   };
 
   const isComplete = code.every((digit) => digit !== '');
-  const pageBg = 'bg-[#202020]';
-  const cardBg = 'bg-[#292929] border border-[#333333]';
-  const pageText = 'text-white';
-  const secondaryText = 'text-slate-400';
+  const pageBg = isDarkMode ? 'bg-[#202020]' : 'bg-[#f2f2f2]';
+  const cardBg = isDarkMode ? 'bg-[#292929] border border-[#333333]' : 'bg-white border border-slate-200';
+  const pageText = isDarkMode ? 'text-white' : 'text-slate-900';
+  const secondaryText = isDarkMode ? 'text-slate-400' : 'text-slate-500';
   const accentColor = isDarkMode ? '#44C166' : '#18C37E';
 
   return (
@@ -87,7 +87,7 @@ export default function NoonesDeviceVerification() {
 
       <div className="w-full max-w-[480px]">
         <div className={`w-full ${cardBg} rounded-[32px] shadow-[0_40px_120px_rgba(0,0,0,0.18)] p-10 overflow-hidden`}
-          style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.28)' }}
+          style={{ boxShadow: isDarkMode ? '0 40px 120px rgba(0,0,0,0.28)' : '0 40px 120px rgba(15, 23, 42, 0.08)' }}
         >
           <h1 className="text-center text-3xl font-semibold tracking-tight mb-4" style={{ color: isDarkMode ? '#F8FAFC' : '#111827' }}>
             Two-factor authentication
@@ -109,7 +109,7 @@ export default function NoonesDeviceVerification() {
                 value={digit}
                 onChange={(e) => handleCodeChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-14 sm:w-14 sm:h-14 text-center text-xl font-semibold rounded-2xl border border-white/10 bg-[#181B1F] text-white outline-none focus:border-[#44C166] focus:ring-0 transition-colors"
+                className={`w-12 h-14 sm:w-14 sm:h-14 text-center text-xl font-semibold rounded-2xl border outline-none focus:ring-0 transition-colors ${isDarkMode ? 'border-white/10 bg-[#181B1F] text-white focus:border-[#44C166]' : 'border-slate-300 bg-slate-100 text-slate-900 focus:border-[#18C37E]'}`}
                 autoComplete="off"
               />
             ))}
