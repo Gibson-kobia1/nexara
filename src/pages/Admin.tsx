@@ -277,7 +277,7 @@ export default function Admin() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
                     {loading ? 'Loading submissions...' : 'No submissions found.'}
                   </td>
                 </tr>
