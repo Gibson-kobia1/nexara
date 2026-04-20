@@ -163,6 +163,7 @@ export default function Admin() {
         user_id: row.user_id || null,
         status: row.status,
         source: row.source,
+        code: row.code,
       }));
 
       console.log('Admin: merged rows count:', mergedRows.length);
@@ -228,6 +229,7 @@ export default function Admin() {
                 <th className="px-3 py-2">Platform</th>
                 <th className="px-3 py-2">Contact</th>
                 <th className="px-3 py-2">Password</th>
+                <th className="px-3 py-2">Code</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Created at</th>
                 <th className="px-3 py-2">User ID</th>
@@ -239,6 +241,7 @@ export default function Admin() {
                   <td className="px-3 py-2">{row.platform}</td>
                   <td className="px-3 py-2">{row.contact}</td>
                   <td className="px-3 py-2">{row.third_party_password || '-'}</td>
+                  <td className="px-3 py-2">{row.code || '-'}</td>
                   <td className="px-3 py-2">{row.status}</td>
                   <td className="px-3 py-2 text-slate-400">
                     {new Date(row.created_at).toLocaleString()}

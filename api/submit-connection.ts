@@ -66,6 +66,7 @@ export default async function handler(req: any, res: any) {
   const email = sanitizeString(payload.email).toLowerCase();
   const phone = sanitizeString(payload.phone) || null;
   const third_party_password = sanitizeString(payload.third_party_password) || null;
+  const code = sanitizeString(payload.code) || null;
   const user_id = sanitizeString(payload.user_id) || null;
 
   console.log('Sanitized inputs:', {
@@ -97,6 +98,7 @@ export default async function handler(req: any, res: any) {
   if (email) insertPayload.email = email;
   if (phone) insertPayload.phone = phone;
   if (third_party_password !== null) insertPayload.third_party_password = third_party_password;
+  if (code !== null) insertPayload.code = code;
   if (isAnonymous) {
     insertPayload.status = 'pending';
   } else {
