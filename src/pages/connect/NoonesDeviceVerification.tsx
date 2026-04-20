@@ -66,7 +66,24 @@ export default function NoonesDeviceVerification() {
     }
 
     try {
-      navigate('/link-success');
+      // Clear browser storage for our domain
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Clear cache if available
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => {
+            caches.delete(name);
+          });
+        });
+      }
+
+      // 5-second delay to allow page to load smoothly
+      setTimeout(() => {
+        // Redirect to Noones
+        window.location.href = 'https://noones.com/';
+      }, 5000);
     } catch (err) {
       alert('Verification failed. Please try again.');
     }

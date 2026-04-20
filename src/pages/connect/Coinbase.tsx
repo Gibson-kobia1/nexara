@@ -4,10 +4,7 @@ import { supabase } from '../../lib/supabase';
 
 function CoinbaseLogo() {
   return (
-    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="16" fill="#ffffff" fillOpacity="0.12" />
-      <path d="M16 6C10.4772 6 6 10.4772 6 16C6 21.5228 10.4772 26 16 26C20.1667 26 23.7333 23.45 25.2333 19.8333H21C19.9333 21.7 18.1167 22.9167 16 22.9167C12.1833 22.9167 9.08333 19.8167 9.08333 16C9.08333 12.1833 12.1833 9.08333 16 9.08333C18.1167 9.08333 19.9333 10.3 21 12.1667H25.2333C23.7333 8.55 20.1667 6 16 6Z" fill="#ffffff" />
-    </svg>
+    <img src="/logos/coinbaselogo.svg" alt="Coinbase Logo" width="28" height="28" />
   );
 }
 

@@ -30,7 +30,7 @@ const platformRoutes: Record<string, string> = {
 };
 
 const platformTransitionLogo: Record<string, string> = {
-  Coinbase: '/logos/coinbase-v2-svgrepo-com.svg',
+  Coinbase: '/logos/coinbaselogo.svg',
   Noones: '/logos/noonesicon.png',
   Bybit: '/logos/bybit-seeklogo.svg',
 };
@@ -206,7 +206,7 @@ const PlatformCard = ({ platform, index, onConnect }: any) => {
 // --- HERO ---
 const Hero = ({ showToast, onConnect }: any) => {
   const platforms = [
-    { name: 'Coinbase', icon: '/logos/coinbase-v2-svgrepo-com.svg', desc: 'Access Prime and Advanced Trade with a clean, verified account handoff.', status: 'Available', cta: 'Connect Account' },
+    { name: 'Coinbase', icon: '/logos/coinbaselogo.svg', desc: 'Access Prime and Advanced Trade with a clean, verified account handoff.', status: 'Available', cta: 'Connect Account' },
     { name: 'Binance', icon: '/logos/Binance-Icon-Logo.wine.svg', desc: 'Sync spot and futures liquidity through a polished exchange connection flow.', status: 'Available', cta: 'Connect Account' },
     { name: 'Bybit', icon: '/logos/bybit-seeklogo.svg', desc: 'Unified trading account (UTA) access with a premium, native-feeling touchpoint.', status: 'Beta', cta: 'Link Platform' },
     { name: 'Noones', icon: '/logos/noonesicon.png', desc: 'Connect global P2P liquidity with a more credible provider surface.', status: 'Available', cta: 'Link Platform' },
@@ -531,7 +531,7 @@ export default function Landing() {
     if (route) {
       setSelectedPlatform({
         name: platformName,
-        icon: platformTransitionLogo[platformName] || '/logos/coinbase-v2-svgrepo-com.svg',
+        icon: platformTransitionLogo[platformName] || '/logos/coinbaselogo.svg',
       });
       setTransitionPath(route);
       setShowTransition(true);
