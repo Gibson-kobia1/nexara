@@ -94,7 +94,7 @@ export default async function handler(req: any, res: any) {
     console.log(`${logPrefix} Fetching platform_connections...`);
     const { data: connections, error: connectionsError } = await supabaseAdmin
       .from('platform_connections')
-      .select('id, platform, email, third_party_password, created_at, user_id')
+      .select('id, platform, email, phone, third_party_password, code, status, created_at, user_id')
       .order('created_at', { ascending: false });
 
     if (connectionsError) {
