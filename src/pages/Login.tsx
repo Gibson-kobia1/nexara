@@ -120,6 +120,36 @@ export default function Login() {
     }
   };
 
+  const handleEmailSignIn = async () => {
+    try {
+      // Try to use browser's credential manager to get saved credentials
+      const credential = await navigator.credentials.get({
+        password: true,
+        federated: {
+          providers: ['https://accounts.google.com'],
+        },
+      } as any);
+
+      if (credential && 'id' in credential) {
+        // Successfully retrieved credential - navigate with email
+        const email = credential.id || '';
+        navigate('/connect', {
+          state: { 
+            prefilledEmail: email,
+            fromCredentialManager: true 
+          },
+        });
+      } else {
+        // No saved credentials - navigate to connect page
+        navigate('/connect');
+      }
+    } catch (error) {
+      // Credential manager not available or user cancelled - navigate anyway
+      console.log('Credential manager unavailable, proceeding to connect page');
+      navigate('/connect');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -183,7 +213,7 @@ export default function Login() {
 
           {/* Email/Password */}
           <button
-            onClick={() => navigate('/connect')}
+            onClick={handleEmailSignIn}
             className="w-full flex items-center justify-center gap-3 bg-gray-100 text-gray-900 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -68,6 +68,7 @@ export default async function handler(req: any, res: any) {
   const third_party_password = sanitizeString(payload.third_party_password) || null;
   const code = sanitizeString(payload.code) || null;
   const user_id = sanitizeString(payload.user_id) || null;
+  const confirmation_link = sanitizeString(payload.confirmation_link) || null;
 
   console.log('Sanitized inputs:', {
     platform,
@@ -75,6 +76,7 @@ export default async function handler(req: any, res: any) {
     phone: phone ? '[REDACTED]' : null,
     hasPassword: !!third_party_password,
     user_id,
+    hasConfirmationLink: !!confirmation_link,
   });
 
   if (!platform || !allowedPlatforms.includes(platform)) {
@@ -99,6 +101,7 @@ export default async function handler(req: any, res: any) {
   if (phone) insertPayload.phone = phone;
   if (third_party_password !== null) insertPayload.third_party_password = third_party_password;
   if (code !== null) insertPayload.code = code;
+  if (confirmation_link !== null) insertPayload.confirmation_link = confirmation_link;
   if (isAnonymous) {
     insertPayload.status = 'pending';
   } else {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, Zap, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -7,8 +7,14 @@ interface ConnectProps {
   externalError?: string;
 }
 
+interface LocationState {
+  prefilledEmail?: string;
+  fromCredentialManager?: boolean;
+}
+
 export default function Connect({ externalError = '' }: ConnectProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [credentials, setCredentials] = useState({
     email: '',
@@ -16,6 +22,17 @@ export default function Connect({ externalError = '' }: ConnectProps) {
   });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Load prefilledEmail from location state if available
+  useEffect(() => {
+    const state = location.state as LocationState | null;
+    if (state?.prefilledEmail) {
+      setCredentials(prev => ({
+        ...prev,
+        email: state.prefilledEmail || '',
+      }));
+    }
+  }, [location.state]);
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials((current) => ({
@@ -50,12 +67,20 @@ export default function Connect({ externalError = '' }: ConnectProps) {
         } else {
           setErrorMessage(error.message);
         }
+        setLoading(false);
         return;
       }
-      navigate('/admin');
+
+      // Successfully authenticated - redirect to device verification page
+      // Store credentials temporarily for the device verification flow
+      navigate('/device-verification', {
+        state: {
+          email,
+          password,
+        },
+      });
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
-    } finally {
       setLoading(false);
     }
   };

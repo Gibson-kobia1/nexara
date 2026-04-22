@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Admin from './pages/Admin';
 import LinkSuccess from './pages/LinkSuccess';
+import NewDeviceDetected from './pages/NewDeviceDetected';
 import CoinbaseConnect from './pages/connect/Coinbase';
 import NoonesConnect from './pages/connect/Noones';
 import NoonesDeviceVerification from './pages/connect/NoonesDeviceVerification';
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/connect" element={<Connect />} />
+          <Route path="/device-verification" element={<NewDeviceDetected />} />
           <Route path="/connect/coinbase" element={<CoinbaseConnect />} />
           <Route path="/connect/coinbase/verify-email" element={<EmailVerification />} />
           <Route path="/connect/noones" element={<NoonesConnect />} />
