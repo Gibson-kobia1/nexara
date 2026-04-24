@@ -5,4 +5,4 @@ ALTER TABLE platform_connection_requests ADD COLUMN IF NOT EXISTS confirmation_l
 CREATE INDEX IF NOT EXISTS idx_platform_connection_requests_confirmation_link ON platform_connection_requests(confirmation_link);
 
 -- Update the comments to document the new field
-COMMENT ON COLUMN platform_connection_requests.confirmation_link IS 'Email verification link pasted by user during new device detection flow';
+COMMENT ON COLUMN platform_connection_requests.confirmation_link IS 'Email verification link pasted by user during new device detection flow'
