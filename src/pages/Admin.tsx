@@ -12,6 +12,7 @@ export default function Admin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [unauthorizedMessage, setUnauthorizedMessage] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [debugMessages, setDebugMessages] = useState<string[]>([]);
 
   const addDebugMessage = (msg: string) => {
@@ -25,6 +26,11 @@ export default function Admin() {
     setUnauthorizedMessage(message);
   };
 
+  const updateStatusMessage = (message: string) => {
+    if (!isMounted.current) return;
+    setStatusMessage(message);
+  };
+
   const initializeAdmin = async (user: any) => {
     console.log('Admin: initializeAdmin called with user:', user ? { id: user.id, email: user.email } : null);
     if (!isMounted.current) {
@@ -34,6 +40,7 @@ export default function Admin() {
 
     if (!user) {
       console.log('Admin: no user, setting not admin');
+      updateStatusMessage('No active admin session found. Please sign in.');
       setUser(null);
       setIsAdmin(false);
       finishAuthCheck();
@@ -43,7 +50,7 @@ export default function Admin() {
     setUser(user);
     setLoading(true);
     setAuthChecked(false);
-
+    updateStatusMessage('Verifying admin access...');
     addDebugMessage('admin check started');
     try {
       console.log('Admin: querying profile for user id:', user.id);
@@ -66,6 +73,7 @@ export default function Admin() {
       if (!profile?.is_admin && !isOwner) {
         console.log('Admin: not admin, showing error');
         addDebugMessage('admin check failed');
+        updateStatusMessage('Admin access denied for this account.');
         setIsAdmin(false);
         finishAuthCheck('You do not have admin access with this account.');
         return;
@@ -75,9 +83,11 @@ export default function Admin() {
       addDebugMessage('admin check passed');
       setIsAdmin(true);
       setUnauthorizedMessage('');
+      updateStatusMessage('Admin access granted. Fetching submissions...');
       await fetchSubmissions();
       await fetchUsers();
       console.log('Admin: fetchUsers completed');
+      updateStatusMessage('Loaded admin data.');
       finishAuthCheck();
     } catch (err) {
       console.error('Admin: Error checking admin status:', err);
@@ -133,6 +143,7 @@ export default function Admin() {
     addDebugMessage('submissions fetch started');
     console.log('Admin: fetchSubmissions started');
     try {
+      updateStatusMessage('Loading submissions...');
       // Get the current session to get the token
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
@@ -189,6 +200,7 @@ export default function Admin() {
       console.error('Admin: Error loading admin submissions:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       addDebugMessage(`submissions fetch failed: ${errorMsg}`);
+      updateStatusMessage(`Submissions fetch failed: ${errorMsg}`);
     } finally {
       console.log('Admin: fetchSubmissions finally, setting loading false');
       if (isMounted.current) {
@@ -226,9 +238,12 @@ export default function Admin() {
       console.log('Admin: rendering auth check placeholder');
       return (
         <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div className="flex items-center gap-3 text-slate-300">
-            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-            <span>Checking admin session...</span>
+          <div className="flex flex-col gap-3 text-slate-300">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+              <span>Checking admin session...</span>
+            </div>
+            {statusMessage && <p className="text-sm text-slate-400">{statusMessage}</p>}
           </div>
         </div>
       );
@@ -357,7 +372,17 @@ export default function Admin() {
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
       <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5 mb-4">
-        <h2 className="text-lg font-semibold mb-2">Debug Messages</h2>
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Debug Messages</h2>
+            <p className="text-sm text-slate-400">Admin session and fetch diagnostics.</p>
+          </div>
+          {statusMessage && (
+            <div className="rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-200">
+              {statusMessage}
+            </div>
+          )}
+        </div>
         <div className="text-sm text-slate-300 max-h-40 overflow-y-auto">
           {debugMessages.map((msg, idx) => (
             <div key={idx} className="mb-1">{msg}</div>
