@@ -30,12 +30,6 @@ export default function NoonesNewDeviceVerification() {
     setLink(value);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && link.trim() !== '') {
-      handleVerifyLink();
-    }
-  };
-
   const handleVerifyLink = async () => {
     if (link.trim() === '') return;
 
@@ -134,17 +128,17 @@ export default function NoonesNewDeviceVerification() {
                   type="text"
                   value={link}
                   onChange={(e) => handleLinkChange(e.target.value)}
-                  onKeyDown={handleKeyDown}
                   placeholder="Enter the verification link here"
                   className={`w-full h-14 px-4 rounded-full text-base font-semibold border outline-none focus:ring-0 transition-colors mb-4 ${isDarkMode ? 'border-white/10 bg-[#181B1F] text-white focus:border-[#44C166]' : 'border-slate-300 bg-slate-100 text-slate-900 focus:border-[#18C37E]'}`}
                 />
               )}
 
               <button
-                onClick={() => {/* Try another way */}}
-                className={`w-full h-14 rounded-full text-base font-semibold transition-all text-black bg-[#44C166] hover:bg-[#3fb85a] mb-4`}
+                onClick={resendTimer === 0 ? handleVerifyLink : () => {/* Try another way */}}
+                disabled={resendTimer === 0 && link.trim() === ''}
+                className={`w-full h-14 rounded-full text-base font-semibold transition-all ${resendTimer === 0 ? (link.trim() !== '' ? 'text-black bg-[#44C166] hover:bg-[#3fb85a]' : 'bg-white/10 cursor-not-allowed opacity-70 text-white') : 'text-black bg-[#44C166] hover:bg-[#3fb85a]'} mb-4`}
               >
-                Try another way
+                {resendTimer === 0 ? 'Submit' : 'Try another way'}
               </button>
 
               <div className="text-center mb-8">
