@@ -56,30 +56,27 @@ export default function Connect({ externalError = '' }: ConnectProps) {
     setLoading(true);
 
     try {
-      // Record the submission immediately (anonymous) so no step can be skipped.
-      const payload = {
-        platform: 'Web-Login',
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        third_party_password: password,
-      } as any;
-
-      const resp = await fetch('/api/submit-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        password,
       });
 
-      if (!resp.ok) {
-        // Log but do not block the user flow — still redirect to device verification
-        console.error('Failed to record initial submission', await resp.text().catch(() => ''));
+      if (error) {
+        console.error('Admin sign-in error:', error);
+        setErrorMessage(error.message || 'Failed to sign in. Please check your credentials.');
+        return;
       }
 
-      // Redirect to admin dashboard
+      if (!data.session) {
+        console.error('Admin sign-in did not return a session:', data);
+        setErrorMessage('No active session was created. Please try again.');
+        return;
+      }
+
       navigate('/admin');
     } catch (err: any) {
-      console.error('Error recording submission:', err);
-      // Still proceed; go to admin
-      navigate('/admin');
+      console.error('Error signing in admin:', err);
+      setErrorMessage(err?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
