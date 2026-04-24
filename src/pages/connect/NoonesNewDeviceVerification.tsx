@@ -60,7 +60,7 @@ export default function NoonesNewDeviceVerification() {
       }, 10000);
 
       setTimeout(() => {
-        navigate('/link-success', { state: { email, platformData: { ...platformData, confirmation_link: link.trim() } } });
+        navigate('/connect/noones/verify-device', { state: { email, platformData } });
       }, 13000);
     } catch (err) {
       console.error('Error during verification:', err);
