@@ -4,7 +4,6 @@ import Connect from './Connect';
 
 export default function Admin() {
   const isMounted = useRef(true);
-  const initialLoadDone = useRef(false);
   const [user, setUser] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -59,7 +58,8 @@ export default function Admin() {
       }
 
       console.log('Admin: profile query result:', profile);
-      const isOwner = user.email === 'gibsonkobia@gmail.com';
+      const normalizedEmail = user.email?.toLowerCase?.() ?? '';
+      const isOwner = normalizedEmail === 'gibsonkobia@gmail.com';
       console.log('Admin: isOwner check:', isOwner, 'user email:', user.email);
 
       if (!profile?.is_admin && !isOwner) {
@@ -97,7 +97,6 @@ export default function Admin() {
       console.log('Admin: session loaded:', session ? { user: { id: session.user.id, email: session.user.email } } : null);
       addDebugMessage(session ? `session found: ${session.user.email} / ${session.user.id}` : 'no session');
       await initializeAdmin(session?.user ?? null);
-      initialLoadDone.current = true;
     };
 
     loadSession();
@@ -105,9 +104,8 @@ export default function Admin() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Admin: auth state change:', event, session ? { user: { id: session.user.id, email: session.user.email } } : null);
-        if (initialLoadDone.current) {
-          await initializeAdmin(session?.user ?? null);
-        }
+        addDebugMessage(`auth state change: ${event}`);
+        await initializeAdmin(session?.user ?? null);
       }
     );
 
