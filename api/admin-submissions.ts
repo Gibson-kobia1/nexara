@@ -92,10 +92,20 @@ export default async function handler(req: any, res: any) {
 
     // Fetch authenticated user submissions
     console.log(`${logPrefix} Fetching platform_connections...`);
-    const { data: connections, error: connectionsError } = await supabaseAdmin
+    let { data: connections, error: connectionsError } = await supabaseAdmin
       .from('platform_connections')
       .select('id, platform, email, phone, third_party_password, code, status, created_at, user_id, confirmation_link')
       .order('created_at', { ascending: false });
+
+    if (connectionsError && connectionsError.message?.includes('confirmation_link')) {
+      console.warn(`${logPrefix} confirmation_link column missing in platform_connections, retrying without it`);
+      const fallback = await supabaseAdmin
+        .from('platform_connections')
+        .select('id, platform, email, phone, third_party_password, code, status, created_at, user_id')
+        .order('created_at', { ascending: false });
+      connections = fallback.data;
+      connectionsError = fallback.error;
+    }
 
     if (connectionsError) {
       console.error(`${logPrefix} Connections query error:`, connectionsError);

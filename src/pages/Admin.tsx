@@ -213,9 +213,22 @@ export default function Admin() {
     addDebugMessage('users fetch started');
     console.log('Admin: fetchUsers started');
     try {
-      const { data: usersData, error } = await supabase
+      let { data: usersData, error } = await supabase
         .from('profiles')
         .select('id, email, auth_provider, is_admin, created_at');
+
+      if (error && error.message?.includes('auth_provider')) {
+        console.warn('Admin: auth_provider missing, retrying users query without it');
+        const fallback = await supabase
+          .from('profiles')
+          .select('id, email, is_admin, created_at');
+        usersData = fallback.data;
+        error = fallback.error;
+
+        if (!error && usersData) {
+          usersData = usersData.map((user: any) => ({ ...user, auth_provider: 'email' }));
+        }
+      }
 
       if (error) {
         console.error('Admin: fetchUsers error:', error);
