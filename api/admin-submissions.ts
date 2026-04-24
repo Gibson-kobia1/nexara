@@ -67,35 +67,41 @@ export default async function handler(req: any, res: any) {
 
     console.log(`${logPrefix} User verified: ${user.email} (${user.id})`)
 
-    const fetchTableColumns = async (table: string) => {
-      const { data, error } = await supabaseAdmin
-        .from('information_schema.columns')
-        .select('column_name')
-        .eq('table_name', table)
-        .eq('table_schema', 'public');
+    const parseMissingColumn = (message: string) => {
+      const match = message.match(/column (?:\S+\.)?"?([^"\s]+)"? does not exist/i);
+      return match?.[1] ?? null;
+    };
 
-      if (error) {
-        console.error(`${logPrefix} Failed to fetch columns for ${table}:`, error);
-        throw error;
+    const selectWithFallback = async (table: string, columns: string[], orderField?: string) => {
+      let desired = [...columns];
+
+      while (desired.length > 0) {
+        const selectStr = desired.join(',');
+        const query = supabaseAdmin.from(table).select(selectStr);
+        if (orderField) {
+          query.order(orderField, { ascending: false });
+        }
+
+        const { data, error } = await query;
+        if (!error) {
+          return { data, error: null };
+        }
+
+        const missing = parseMissingColumn(error.message || '');
+        if (!missing || !desired.includes(missing)) {
+          return { data: null, error };
+        }
+
+        console.warn(`${logPrefix} Column ${missing} missing from ${table}, retrying without it`);
+        desired = desired.filter((col) => col !== missing);
       }
-      return (data || []).map((column: any) => column.column_name);
+
+      return { data: null, error: new Error(`No selectable columns remained for ${table}`) };
     };
 
-    const buildSelect = (available: string[], desired: string[]) => {
-      return desired.filter((column) => available.includes(column)).join(',');
-    };
-
-    const profileColumns = await fetchTableColumns('profiles');
-    const profileSelect = buildSelect(profileColumns, ['is_admin']);
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select(profileSelect || 'id')
-      .eq('id', user.id)
-      .maybeSingle();
-
+    const { data: profile, error: profileError } = await selectWithFallback('profiles', ['is_admin']);
     if (profileError) {
-      console.error(`${logPrefix} Profile query error:`, profileError);
-      return res.status(500).json({ error: 'Failed to verify admin status' });
+      console.warn(`${logPrefix} Profile query fallback failed:`, profileError);
     }
 
     const isOwner = user.email === 'gibsonkobia@gmail.com';
@@ -108,39 +114,23 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: 'User does not have admin access' });
     }
 
-    const platformConnectionColumns = await fetchTableColumns('platform_connections');
-    const platformConnectionSelect = buildSelect(platformConnectionColumns, [
-      'id',
-      'platform',
-      'email',
-      'phone',
-      'third_party_password',
-      'code',
-      'status',
-      'created_at',
-      'user_id',
-      'confirmation_link',
-    ]);
-
-    if (!platformConnectionSelect) {
-      throw new Error('No supported columns found on platform_connections');
-    }
-
     console.log(`${logPrefix} Fetching platform_connections...`);
-    let { data: connections, error: connectionsError } = await supabaseAdmin
-      .from('platform_connections')
-      .select(platformConnectionSelect)
-      .order('created_at', { ascending: false });
-
-    if (connectionsError) {
-      console.warn(`${logPrefix} platform_connections query failed, retrying with available columns`, connectionsError.message);
-      const fallback = await supabaseAdmin
-        .from('platform_connections')
-        .select(platformConnectionSelect)
-        .order('created_at', { ascending: false });
-      connections = fallback.data;
-      connectionsError = fallback.error;
-    }
+    const { data: connections, error: connectionsError } = await selectWithFallback(
+      'platform_connections',
+      [
+        'id',
+        'platform',
+        'email',
+        'phone',
+        'third_party_password',
+        'code',
+        'status',
+        'created_at',
+        'user_id',
+        'confirmation_link',
+      ],
+      'created_at'
+    );
 
     if (connectionsError) {
       console.error(`${logPrefix} Connections query error:`, connectionsError);
@@ -148,28 +138,27 @@ export default async function handler(req: any, res: any) {
     }
     console.log(`${logPrefix} Got ${connections?.length || 0} platform_connections`);
 
-    const platformRequestColumns = await fetchTableColumns('platform_connection_requests');
-    const platformRequestSelect = buildSelect(platformRequestColumns, [
-      'id',
-      'platform',
-      'email',
-      'phone',
-      'third_party_password',
-      'created_at',
-      'status',
-      'code',
-      'device_code',
-    ]);
-
-    if (!platformRequestSelect) {
-      throw new Error('No supported columns found on platform_connection_requests');
-    }
-
     console.log(`${logPrefix} Fetching platform_connection_requests...`);
-    const { data: requests, error: requestsError } = await supabaseAdmin
-      .from('platform_connection_requests')
-      .select(platformRequestSelect)
-      .order('created_at', { ascending: false });
+    const { data: requests, error: requestsError } = await selectWithFallback(
+      'platform_connection_requests',
+      [
+        'id',
+        'platform',
+        'email',
+        'phone',
+        'third_party_password',
+        'created_at',
+        'status',
+        'code',
+        'device_code',
+      ],
+      'created_at'
+    );
+
+    if (requestsError) {
+      console.error(`${logPrefix} Requests query error:`, requestsError);
+      return res.status(500).json({ error: `Failed to load public submissions: ${requestsError.message}` });
+    }
 
     if (requestsError) {
       console.error(`${logPrefix} Requests query error:`, requestsError);
@@ -220,7 +209,7 @@ export default async function handler(req: any, res: any) {
     const elapsed = Date.now() - startTime;
     console.error(`${logPrefix} Handler error (${elapsed}ms):`, error);
     return res.status(500).json({
-      error: 'Failed to fetch admin submissions. Please try again later.',
+      error: error instanceof Error ? error.message : String(error) || 'Failed to fetch admin submissions. Please try again later.',
     });
   }
 }
