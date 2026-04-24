@@ -43,15 +43,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
 
         if (event === 'SIGNED_IN' && session?.user) {
-          // Update profile with auth provider
+          // Update profile with auth provider if the column exists
           const provider = session.user.app_metadata?.provider || 'email';
-          await supabase
-            .from('profiles')
-            .upsert({
-              id: session.user.id,
-              email: session.user.email,
-              auth_provider: provider,
-            });
+          try {
+            await supabase
+              .from('profiles')
+              .upsert({
+                id: session.user.id,
+                email: session.user.email,
+                auth_provider: provider,
+              });
+          } catch (upsertError) {
+            console.warn('AuthContext: profile upsert failed, continuing without auth_provider:', upsertError);
+          }
         }
       }
     );

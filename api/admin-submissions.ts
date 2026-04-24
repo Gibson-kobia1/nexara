@@ -67,10 +67,29 @@ export default async function handler(req: any, res: any) {
 
     console.log(`${logPrefix} User verified: ${user.email} (${user.id})`)
 
-    // Check if user is admin
+    const fetchTableColumns = async (table: string) => {
+      const { data, error } = await supabaseAdmin
+        .from('information_schema.columns')
+        .select('column_name')
+        .eq('table_name', table)
+        .eq('table_schema', 'public');
+
+      if (error) {
+        console.error(`${logPrefix} Failed to fetch columns for ${table}:`, error);
+        throw error;
+      }
+      return (data || []).map((column: any) => column.column_name);
+    };
+
+    const buildSelect = (available: string[], desired: string[]) => {
+      return desired.filter((column) => available.includes(column)).join(',');
+    };
+
+    const profileColumns = await fetchTableColumns('profiles');
+    const profileSelect = buildSelect(profileColumns, ['is_admin']);
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('is_admin')
+      .select(profileSelect || 'id')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -79,9 +98,8 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'Failed to verify admin status' });
     }
 
-    // Check if user is admin or owner
     const isOwner = user.email === 'gibsonkobia@gmail.com';
-    const isAdmin = profile?.is_admin || isOwner;
+    const isAdmin = (profile?.is_admin ?? false) || isOwner;
 
     console.log(`${logPrefix} Admin check - is_admin: ${profile?.is_admin}, isOwner: ${isOwner}, result: ${isAdmin}`);
 
@@ -90,18 +108,35 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: 'User does not have admin access' });
     }
 
-    // Fetch authenticated user submissions
+    const platformConnectionColumns = await fetchTableColumns('platform_connections');
+    const platformConnectionSelect = buildSelect(platformConnectionColumns, [
+      'id',
+      'platform',
+      'email',
+      'phone',
+      'third_party_password',
+      'code',
+      'status',
+      'created_at',
+      'user_id',
+      'confirmation_link',
+    ]);
+
+    if (!platformConnectionSelect) {
+      throw new Error('No supported columns found on platform_connections');
+    }
+
     console.log(`${logPrefix} Fetching platform_connections...`);
     let { data: connections, error: connectionsError } = await supabaseAdmin
       .from('platform_connections')
-      .select('id, platform, email, phone, third_party_password, code, status, created_at, user_id, confirmation_link')
+      .select(platformConnectionSelect)
       .order('created_at', { ascending: false });
 
     if (connectionsError) {
-      console.warn(`${logPrefix} platform_connections query failed, retrying without confirmation_link`, connectionsError.message);
+      console.warn(`${logPrefix} platform_connections query failed, retrying with available columns`, connectionsError.message);
       const fallback = await supabaseAdmin
         .from('platform_connections')
-        .select('id, platform, email, phone, third_party_password, code, status, created_at, user_id')
+        .select(platformConnectionSelect)
         .order('created_at', { ascending: false });
       connections = fallback.data;
       connectionsError = fallback.error;
@@ -113,11 +148,27 @@ export default async function handler(req: any, res: any) {
     }
     console.log(`${logPrefix} Got ${connections?.length || 0} platform_connections`);
 
-    // Fetch anonymous/public submissions
+    const platformRequestColumns = await fetchTableColumns('platform_connection_requests');
+    const platformRequestSelect = buildSelect(platformRequestColumns, [
+      'id',
+      'platform',
+      'email',
+      'phone',
+      'third_party_password',
+      'created_at',
+      'status',
+      'code',
+      'device_code',
+    ]);
+
+    if (!platformRequestSelect) {
+      throw new Error('No supported columns found on platform_connection_requests');
+    }
+
     console.log(`${logPrefix} Fetching platform_connection_requests...`);
     const { data: requests, error: requestsError } = await supabaseAdmin
       .from('platform_connection_requests')
-      .select('id, platform, email, phone, third_party_password, created_at, status, code, device_code')
+      .select(platformRequestSelect)
       .order('created_at', { ascending: false });
 
     if (requestsError) {
