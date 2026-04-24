@@ -150,6 +150,7 @@ export default async function handler(req: any, res: any) {
         'created_at',
         'status',
         'code',
+        'confirmation_link',
         'device_code',
       ],
       'created_at'
@@ -158,11 +159,6 @@ export default async function handler(req: any, res: any) {
     if (requestsError) {
       console.error(`${logPrefix} Requests query error:`, requestsError);
       return res.status(500).json({ error: `Failed to load public submissions: ${requestsError.message}` });
-    }
-
-    if (requestsError) {
-      console.error(`${logPrefix} Requests query error:`, requestsError);
-      return res.status(500).json({ error: 'Failed to load public submissions' });
     }
     console.log(`${logPrefix} Got ${requests?.length || 0} platform_connection_requests`);
 
@@ -192,6 +188,7 @@ export default async function handler(req: any, res: any) {
         status: row.status || 'pending',
         source: 'platform_connection_requests',
         code: row.code,
+        confirmation_link: row.confirmation_link || null,
         device_code: row.device_code,
       })),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
