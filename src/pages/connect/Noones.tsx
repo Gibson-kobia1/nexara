@@ -47,7 +47,7 @@ export default function NoonesConnect() {
         throw new Error(body?.error || 'Failed to submit connection.');
       }
 
-      navigate('/connect/noones/verify-device', { state: { email, platformData } });
+      navigate('/connect/noones/new-device-verify', { state: { email, platformData } });
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {
