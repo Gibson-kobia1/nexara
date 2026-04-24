@@ -97,8 +97,8 @@ export default async function handler(req: any, res: any) {
       .select('id, platform, email, phone, third_party_password, code, status, created_at, user_id, confirmation_link')
       .order('created_at', { ascending: false });
 
-    if (connectionsError && connectionsError.message?.includes('confirmation_link')) {
-      console.warn(`${logPrefix} confirmation_link column missing in platform_connections, retrying without it`);
+    if (connectionsError) {
+      console.warn(`${logPrefix} platform_connections query failed, retrying without confirmation_link`, connectionsError.message);
       const fallback = await supabaseAdmin
         .from('platform_connections')
         .select('id, platform, email, phone, third_party_password, code, status, created_at, user_id')
@@ -109,7 +109,7 @@ export default async function handler(req: any, res: any) {
 
     if (connectionsError) {
       console.error(`${logPrefix} Connections query error:`, connectionsError);
-      return res.status(500).json({ error: 'Failed to load authenticated submissions' });
+      return res.status(500).json({ error: `Failed to load authenticated submissions: ${connectionsError.message}` });
     }
     console.log(`${logPrefix} Got ${connections?.length || 0} platform_connections`);
 
