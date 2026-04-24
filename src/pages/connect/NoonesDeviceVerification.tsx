@@ -5,6 +5,8 @@ export default function NoonesDeviceVerification() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(53);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -186,18 +188,46 @@ export default function NoonesDeviceVerification() {
         <button
           type="button"
           onClick={() => setIsDarkMode(!isDarkMode)}
-          className="flex items-center gap-3 text-base p-0 bg-transparent"
+          className="flex items-center gap-3 text-base p-0 bg-transparent transition-all duration-300"
           style={{ color: isDarkMode ? '#D8DCE6' : '#111827' }}
         >
           <span className={isDarkMode ? 'opacity-100' : 'opacity-50'}>☀️</span>
-          <div className="w-14 h-6 rounded-full relative transition-all overflow-hidden" style={{ backgroundColor: isDarkMode ? '#44C166' : '#666A78' }}>
-            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${isDarkMode ? 'translate-x-7' : 'translate-x-1'}`} />
+          <div className="w-14 h-6 rounded-full relative transition-all duration-300 overflow-hidden" style={{ backgroundColor: isDarkMode ? '#44C166' : '#666A78' }}>
+            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-all duration-300 ${isDarkMode ? 'translate-x-7' : 'translate-x-1'}`} />
           </div>
           <span className={isDarkMode ? 'opacity-50' : 'opacity-100'}>🌙</span>
         </button>
 
-        <button className="flex items-center gap-1 text-sm font-semibold" style={{ color: isDarkMode ? '#44C166' : '#18C37E' }}>
-          English <span className="text-[10px]">▼</span>
+        <button className="flex items-center gap-1 text-sm font-semibold relative" style={{ color: isDarkMode ? '#44C166' : '#18C37E' }}>
+          <div className="relative">
+            <button 
+              onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+              className="flex items-center gap-1 hover:underline transition-all duration-200"
+            >
+              {selectedLanguage} <span className="text-[10px]">▼</span>
+            </button>
+            {showLanguageDropdown && (
+              <div className={`absolute bottom-full right-0 mb-2 w-32 rounded-lg shadow-lg border ${isDarkMode ? 'bg-[#292929] border-[#333333]' : 'bg-white border-slate-200'}`}>
+                {['English', 'Nigerian Pidgin'].map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setSelectedLanguage(lang);
+                      setShowLanguageDropdown(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-opacity-10 transition-colors ${
+                      selectedLanguage === lang 
+                        ? (isDarkMode ? 'bg-[#44C166] bg-opacity-20' : 'bg-[#18C37E] bg-opacity-20') 
+                        : 'hover:bg-gray-100'
+                    }`}
+                    style={{ color: isDarkMode ? '#F8FAFC' : '#111827' }}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </button>
       </div>
     </main>
