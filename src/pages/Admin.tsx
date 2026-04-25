@@ -4,7 +4,6 @@ import Connect from './Connect';
 
 export default function Admin() {
   const isMounted = useRef(true);
-  const initialLoadDone = useRef(false);
   const [user, setUser] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -113,8 +112,6 @@ export default function Admin() {
         console.error('Admin: loadSession failed:', err);
         addDebugMessage(`loadSession failed: ${err}`);
         finishAuthCheck('Unable to load session. Please sign in again.');
-      } finally {
-        initialLoadDone.current = true;
       }
     };
 
@@ -124,10 +121,6 @@ export default function Admin() {
       async (event, session) => {
         console.log('Admin: auth state change:', event, session ? { user: { id: session.user.id, email: session.user.email } } : null);
         addDebugMessage(`auth state change: ${event}`);
-        if (!initialLoadDone.current) {
-          console.log('Admin: ignoring auth event before initial load');
-          return;
-        }
         await initializeAdmin(session?.user ?? null);
       }
     );
