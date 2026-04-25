@@ -11,7 +11,6 @@ export default function NoonesConnect() {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [googleMessage, setGoogleMessage] = useState('');
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
@@ -19,34 +18,6 @@ export default function NoonesConnect() {
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials((current) => ({ ...current, [field]: event.target.value }));
-  };
-
-  const handleSelectGoogleAccount = async () => {
-    if (!window.navigator.credentials || typeof window.navigator.credentials.get !== 'function') {
-      setGoogleMessage('Your browser does not support selecting saved Google accounts here.');
-      return;
-    }
-
-    try {
-      const credential = await (navigator as any).credentials.get({
-        federated: { providers: ['https://accounts.google.com'] },
-        mediation: 'required',
-      });
-
-      if (!credential || !credential.id) {
-        setGoogleMessage('No Google account selected.');
-        return;
-      }
-
-      setCredentials((current) => ({
-        ...current,
-        email: String(credential.id),
-      }));
-      setGoogleMessage(`Selected ${credential.id}. Please enter your password.`);
-    } catch (err) {
-      console.error('Google account picker error:', err);
-      setGoogleMessage('Unable to open Google account chooser.');
-    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -111,12 +82,8 @@ export default function NoonesConnect() {
 
           {/* Social Icons */}
           <div className="flex gap-6 mb-4">
-            <button
-              type="button"
-              onClick={handleSelectGoogleAccount}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition"
-            >
-              <img src="/logos/google-icon-logo-svgrepo-com.svg" alt="Use Google account" className="w-9 h-9" />
+            <button className="w-10 h-10 flex items-center justify-center">
+              <img src="/logos/google-icon-logo-svgrepo-com.svg" alt="Google" className="w-9 h-9" />
             </button>
             <button className="w-10 h-10 flex items-center justify-center">
               <img src="/logos/apple-logo-svgrepo-com.svg" alt="Apple" className={`w-9 h-9 ${isDarkMode ? 'invert' : ''}`} />
@@ -125,9 +92,6 @@ export default function NoonesConnect() {
               <img src="/logos/telegram.svg" alt="Telegram" className="w-9 h-9" />
             </button>
           </div>
-          {googleMessage && (
-            <p className="text-sm text-slate-400 mb-3">{googleMessage}</p>
-          )}
 
           <form onSubmit={handleSubmit} className="w-full space-y-3">
             <div className="space-y-2">
