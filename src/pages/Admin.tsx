@@ -164,7 +164,7 @@ export default function Admin() {
       async (event, session) => {
         console.log('Admin: auth state change:', event, session ? { user: { id: session.user.id, email: session.user.email } } : null);
         addDebugMessage(`auth state change: ${event}`);
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           await initializeAdmin(session?.user ?? null);
         } else if (event === 'SIGNED_OUT') {
           console.log('Admin: signed out, clearing admin state');
