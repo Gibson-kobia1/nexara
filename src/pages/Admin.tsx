@@ -64,65 +64,70 @@ export default function Admin() {
     setAdminState('loading-session');
     updateStatusMessage('Waiting for session to stabilize...');
 
+    // Create a 5-second timeout for the admin check
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Admin check timed out (5s) - Request took too long')), 5000)
+    );
+
     try {
-      // Session Guard: Wait for valid session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.error('Admin: getSession error:', sessionError);
-        throw sessionError;
-      }
-      if (!session) {
-        console.log('Admin: no valid session, cannot proceed');
-        addDebugMessage('check-failed: no valid session');
-        updateStatusMessage('Session not ready. Please refresh and try again.');
-        setIsAdmin(false);
-        finishAuthCheck('Session not available.');
-        return;
-      }
+      // Wrap the entire admin check in Promise.race with timeout
+      const adminCheckPromise = (async () => {
+        // Session Guard: Use user object from context (already verified)
+        if (!user.id) {
+          console.log('Admin: user missing id, cannot proceed');
+          addDebugMessage('check-failed: user missing id');
+          updateStatusMessage('Invalid user session. Please refresh and try again.');
+          setIsAdmin(false);
+          finishAuthCheck('Invalid user session.');
+          return;
+        }
 
-      setAdminState('verifying-admin');
-      updateStatusMessage('Verifying admin access...');
-      addDebugMessage('admin check started');
+        setAdminState('verifying-admin');
+        updateStatusMessage('Verifying admin access...');
+        addDebugMessage('admin check started');
 
-      console.log('Admin: querying profile for user id:', user.id);
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .maybeSingle();
+        console.log('Admin: querying profile for user id:', user.id);
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .maybeSingle();
 
-      if (error) {
-        console.error('Admin: profile query error:', error);
-        throw error;
-      }
+        if (error) {
+          console.error('Admin: profile query error:', error);
+          throw error;
+        }
 
-      console.log('Admin: profile query result:', profile);
-      addDebugMessage('profile query completed');
-      const normalizedEmail = user.email?.toLowerCase?.() ?? '';
-      const adminOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
-      const isOwner = adminOwnerEmails.includes(normalizedEmail);
-      console.log('Admin: isOwner check:', isOwner, 'user email:', user.email);
+        console.log('Admin: profile query result:', profile);
+        addDebugMessage('profile query completed');
+        const normalizedEmail = user.email?.toLowerCase?.() ?? '';
+        const adminOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
+        const isOwner = adminOwnerEmails.includes(normalizedEmail);
+        console.log('Admin: isOwner check:', isOwner, 'user email:', user.email);
 
-      if (!profile?.is_admin && !isOwner) {
-        console.log('Admin: not admin, showing error');
-        addDebugMessage('check-failed: not admin');
-        updateStatusMessage('Admin access denied for this account.');
-        setIsAdmin(false);
-        finishAuthCheck('You do not have admin access with this account.');
-        return;
-      }
+        if (!profile?.is_admin && !isOwner) {
+          console.log('Admin: not admin, showing error');
+          addDebugMessage('check-failed: not admin');
+          updateStatusMessage('Admin access denied for this account.');
+          setIsAdmin(false);
+          finishAuthCheck('You do not have admin access with this account.');
+          return;
+        }
 
-      console.log('Admin: user is admin, fetching submissions');
-      addDebugMessage('admin check passed');
-      setIsAdmin(true);
-      setUnauthorizedMessage('');
-      updateStatusMessage('Admin access granted. Fetching submissions...');
-      finishAuthCheck('', initId);
-      await fetchSubmissions(abortController.current.signal);
-      await fetchUsers();
-      console.log('Admin: fetchUsers completed');
-      updateStatusMessage('Loaded admin data.');
-      addDebugMessage('check-completed');
+        console.log('Admin: user is admin, fetching submissions');
+        addDebugMessage('admin check passed');
+        setIsAdmin(true);
+        setUnauthorizedMessage('');
+        updateStatusMessage('Admin access granted. Fetching submissions...');
+        finishAuthCheck('', initId);
+        await fetchSubmissions(abortController.current.signal);
+        await fetchUsers();
+        console.log('Admin: fetchUsers completed');
+        updateStatusMessage('Loaded admin data.');
+        addDebugMessage('check-completed');
+      })();
+
+      await Promise.race([adminCheckPromise, timeoutPromise]);
     } catch (err) {
       if (err.name === 'AbortError') {
         console.log('Admin: admin check aborted');
@@ -132,11 +137,14 @@ export default function Admin() {
       console.error('Admin: Error checking admin status:', err);
       addDebugMessage(`check-failed: ${err}`);
       setIsAdmin(false);
-      finishAuthCheck('Unable to verify admin access. Please try again later.', initId);
+      if (isMounted.current) {
+        finishAuthCheck('Unable to verify admin access. Please try again later.', initId);
+      }
     } finally {
       if (isMounted.current) {
         setLoading(false);
         setAdminState('ready');
+        console.log('Admin: initializeAdmin finally block - loading state cleared');
       }
     }
   };

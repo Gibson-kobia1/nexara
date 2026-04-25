@@ -12,11 +12,12 @@ if (missingUrl || missingAnonKey) {
   if (missingAnonKey) messageParts.push('VITE_SUPABASE_ANON_KEY is missing or invalid.');
   const errorMessage = `${messageParts.join(' ')} Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vite environment variables.`;
 
-  console.error('Supabase client initialization failed:', {
+  console.error('CRITICAL: Supabase Environment Variables Missing', {
     errorMessage,
     hasUrl: Boolean(supabaseUrl),
     hasAnonKey: Boolean(supabaseAnonKey),
     urlValue: supabaseUrl ? '[REDACTED]' : null,
+    timestamp: new Date().toISOString(),
   });
 
   throw new Error(errorMessage);

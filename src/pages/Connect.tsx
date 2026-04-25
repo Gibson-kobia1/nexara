@@ -56,26 +56,37 @@ export default function Connect({ externalError = '' }: ConnectProps) {
     setLoading(true);
 
     try {
+      console.log('Connect: Attempting sign-in for email:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        console.error('Admin sign-in error:', error);
+        console.error('Login Fetch Error Detail:', {
+          errorMessage: error.message,
+          errorStatus: (error as any).status,
+          errorCode: (error as any).code,
+          fullError: error,
+        });
         setErrorMessage(error.message || 'Failed to sign in. Please check your credentials.');
         return;
       }
 
       if (!data.session) {
-        console.error('Admin sign-in did not return a session:', data);
+        console.error('Connect: sign-in did not return a session:', data);
         setErrorMessage('No active session was created. Please try again.');
         return;
       }
 
+      console.log('Connect: sign-in successful, navigating to admin');
       navigate('/admin');
     } catch (err: any) {
-      console.error('Error signing in admin:', err);
+      console.error('Login Fetch Error Detail:', {
+        errorMessage: err?.message || 'Unknown error',
+        errorType: err?.name,
+        fullError: err,
+      });
       setErrorMessage(err?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
