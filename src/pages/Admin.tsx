@@ -384,6 +384,7 @@ export default function Admin() {
 
     const handleRealtimeSubmission = (payload: any) => {
       console.log('REALTIME_STATUS: event received');
+      console.log('DEBUG: Full payload received:', payload);
       console.log('Raw payload:', payload);
 
       setRows((prev) => [payload.new, ...prev.filter(r => r.id !== payload.new.id)]);

