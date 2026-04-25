@@ -7,6 +7,7 @@ export default function Admin() {
   const isMounted = useRef(true);
   const currentInitId = useRef(0);
   const { user: authUser, loading: authLoading } = useAuth();
+  const adminInitUserId = useRef<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +68,7 @@ export default function Admin() {
       }
 
       console.log('Admin: profile query result:', profile);
+      addDebugMessage('profile query completed');
       const normalizedEmail = user.email?.toLowerCase?.() ?? '';
       const adminOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
       const isOwner = adminOwnerEmails.includes(normalizedEmail);
@@ -110,33 +112,25 @@ export default function Admin() {
     addDebugMessage('auth state changed via context');
     updateStatusMessage(authLoading ? 'Restoring saved admin session...' : 'Verifying admin access...');
 
-    if (authTimeout.current) {
-      window.clearTimeout(authTimeout.current);
-      authTimeout.current = null;
-    }
-
     if (authLoading) {
       return;
     }
 
-    if (authUser) {
-      initializeAdmin(authUser);
+    if (!authUser) {
+      addDebugMessage('no auth user after restore');
+      setIsAdmin(false);
+      finishAuthCheck('No active session. Please sign in.');
       return;
     }
 
-    addDebugMessage('no auth user yet, waiting briefly for auth event');
-    authTimeout.current = window.setTimeout(() => {
-      if (!authUser) {
-        addDebugMessage('auth settle timeout reached, no session found');
-        finishAuthCheck('No active session. Please sign in.');
-      }
-    }, 500);
+    if (adminInitUserId.current === authUser.id) {
+      addDebugMessage('auth user unchanged; skipping duplicate admin init');
+      return;
+    }
 
-    return () => {
-      if (authTimeout.current) {
-        window.clearTimeout(authTimeout.current);
-      }
-    };
+    adminInitUserId.current = authUser.id;
+    addDebugMessage(`new auth user detected: ${authUser.email}`);
+    initializeAdmin(authUser);
   }, [authLoading, authUser]);
 
   const fetchSubmissions = async () => {
