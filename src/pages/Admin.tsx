@@ -4,6 +4,7 @@ import Connect from './Connect';
 
 export default function Admin() {
   const isMounted = useRef(true);
+  const currentInitId = useRef(0);
   const [user, setUser] = useState<any>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -18,8 +19,9 @@ export default function Admin() {
     setDebugMessages(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
   };
 
-  const finishAuthCheck = (message = '') => {
+  const finishAuthCheck = (message = '', initId?: number) => {
     if (!isMounted.current) return;
+    if (initId !== undefined && currentInitId.current !== initId) return;
     setAuthChecked(true);
     setLoading(false);
     setUnauthorizedMessage(message);
@@ -31,7 +33,8 @@ export default function Admin() {
   };
 
   const initializeAdmin = async (user: any) => {
-    console.log('Admin: initializeAdmin called with user:', user ? { id: user.id, email: user.email } : null);
+    const initId = ++currentInitId.current;
+    console.log('Admin: initializeAdmin called with user:', user ? { id: user.id, email: user.email } : null, 'initId:', initId);
     if (!isMounted.current) {
       console.log('Admin: component unmounted, skipping');
       return;
@@ -87,12 +90,12 @@ export default function Admin() {
       await fetchUsers();
       console.log('Admin: fetchUsers completed');
       updateStatusMessage('Loaded admin data.');
-      finishAuthCheck();
+      finishAuthCheck('', initId);
     } catch (err) {
       console.error('Admin: Error checking admin status:', err);
       addDebugMessage(`admin check failed: ${err}`);
       setIsAdmin(false);
-      finishAuthCheck('Unable to verify admin access. Please try again later.');
+      finishAuthCheck('Unable to verify admin access. Please try again later.', initId);
     }
   };
 
@@ -107,7 +110,11 @@ export default function Admin() {
         if (error) console.error('Admin: getSession error:', error);
         console.log('Admin: session loaded:', session ? { user: { id: session.user.id, email: session.user.email } } : null);
         addDebugMessage(session ? `session found: ${session.user.email} / ${session.user.id}` : 'no session');
-        await initializeAdmin(session?.user ?? null);
+        if (session?.user) {
+          await initializeAdmin(session.user);
+        } else {
+          finishAuthCheck('No active session. Please sign in.');
+        }
       } catch (err) {
         console.error('Admin: loadSession failed:', err);
         addDebugMessage(`loadSession failed: ${err}`);
@@ -121,7 +128,13 @@ export default function Admin() {
       async (event, session) => {
         console.log('Admin: auth state change:', event, session ? { user: { id: session.user.id, email: session.user.email } } : null);
         addDebugMessage(`auth state change: ${event}`);
-        await initializeAdmin(session?.user ?? null);
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          await initializeAdmin(session?.user ?? null);
+        } else if (event === 'SIGNED_OUT') {
+          console.log('Admin: signed out, clearing admin state');
+          setIsAdmin(false);
+          finishAuthCheck('Signed out. Please sign in again.');
+        }
       }
     );
 
