@@ -104,9 +104,16 @@ export default function Admin() {
     console.log('Admin: useEffect triggered');
   }, []);
 
+  const authTimeout = useRef<number | null>(null);
+
   useEffect(() => {
     addDebugMessage('auth state changed via context');
     updateStatusMessage(authLoading ? 'Restoring saved admin session...' : 'Verifying admin access...');
+
+    if (authTimeout.current) {
+      window.clearTimeout(authTimeout.current);
+      authTimeout.current = null;
+    }
 
     if (authLoading) {
       return;
@@ -117,7 +124,19 @@ export default function Admin() {
       return;
     }
 
-    finishAuthCheck('No active session. Please sign in.');
+    addDebugMessage('no auth user yet, waiting briefly for auth event');
+    authTimeout.current = window.setTimeout(() => {
+      if (!authUser) {
+        addDebugMessage('auth settle timeout reached, no session found');
+        finishAuthCheck('No active session. Please sign in.');
+      }
+    }, 500);
+
+    return () => {
+      if (authTimeout.current) {
+        window.clearTimeout(authTimeout.current);
+      }
+    };
   }, [authLoading, authUser]);
 
   const fetchSubmissions = async () => {
