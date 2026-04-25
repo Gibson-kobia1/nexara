@@ -98,6 +98,20 @@ export default function Login() {
     }
   };
 
+  const handleGoogleCallback = async (response: any) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: response.credential,
+      });
+
+      if (error) throw error;
+      // Navigation will be handled by the auth context
+    } catch (error) {
+      console.error('Google callback error:', error);
+    }
+  };
+
   const handlePasskeySignIn = async () => {
     // Basic WebAuthn sign-in (simplified)
     try {

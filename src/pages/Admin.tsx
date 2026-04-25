@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function Admin() {
   const isMounted = useRef(true);
   const currentInitId = useRef(0);
+  const abortController = useRef<AbortController | null>(null);
   const { user: authUser, loading: authLoading } = useAuth();
   const adminInitUserId = useRef<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -13,6 +14,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [adminState, setAdminState] = useState<'loading-session' | 'verifying-admin' | 'ready'>('loading-session');
   const [unauthorizedMessage, setUnauthorizedMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [debugMessages, setDebugMessages] = useState<string[]>([]);
@@ -26,6 +28,7 @@ export default function Admin() {
     if (initId !== undefined && currentInitId.current !== initId) return;
     setAuthChecked(true);
     setLoading(false);
+    setAdminState('ready');
     setUnauthorizedMessage(message);
   };
 
@@ -42,6 +45,12 @@ export default function Admin() {
       return;
     }
 
+    // Abort previous admin check
+    if (abortController.current) {
+      abortController.current.abort();
+    }
+    abortController.current = new AbortController();
+
     if (!user) {
       console.log('Admin: no user, setting not admin');
       updateStatusMessage('No active admin session found. Please sign in.');
@@ -52,9 +61,29 @@ export default function Admin() {
 
     setLoading(true);
     setAuthChecked(false);
-    updateStatusMessage('Verifying admin access...');
-    addDebugMessage('admin check started');
+    setAdminState('loading-session');
+    updateStatusMessage('Waiting for session to stabilize...');
+
     try {
+      // Session Guard: Wait for valid session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Admin: getSession error:', sessionError);
+        throw sessionError;
+      }
+      if (!session) {
+        console.log('Admin: no valid session, cannot proceed');
+        addDebugMessage('check-failed: no valid session');
+        updateStatusMessage('Session not ready. Please refresh and try again.');
+        setIsAdmin(false);
+        finishAuthCheck('Session not available.');
+        return;
+      }
+
+      setAdminState('verifying-admin');
+      updateStatusMessage('Verifying admin access...');
+      addDebugMessage('admin check started');
+
       console.log('Admin: querying profile for user id:', user.id);
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -76,7 +105,7 @@ export default function Admin() {
 
       if (!profile?.is_admin && !isOwner) {
         console.log('Admin: not admin, showing error');
-        addDebugMessage('admin check failed');
+        addDebugMessage('check-failed: not admin');
         updateStatusMessage('Admin access denied for this account.');
         setIsAdmin(false);
         finishAuthCheck('You do not have admin access with this account.');
@@ -89,21 +118,36 @@ export default function Admin() {
       setUnauthorizedMessage('');
       updateStatusMessage('Admin access granted. Fetching submissions...');
       finishAuthCheck('', initId);
-      await fetchSubmissions();
+      await fetchSubmissions(abortController.current.signal);
       await fetchUsers();
       console.log('Admin: fetchUsers completed');
       updateStatusMessage('Loaded admin data.');
+      addDebugMessage('check-completed');
     } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('Admin: admin check aborted');
+        addDebugMessage('check-aborted');
+        return;
+      }
       console.error('Admin: Error checking admin status:', err);
-      addDebugMessage(`admin check failed: ${err}`);
+      addDebugMessage(`check-failed: ${err}`);
       setIsAdmin(false);
       finishAuthCheck('Unable to verify admin access. Please try again later.', initId);
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+        setAdminState('ready');
+      }
     }
   };
 
   useEffect(() => {
-    addDebugMessage('page mounted');
-    console.log('Admin: useEffect triggered');
+    return () => {
+      isMounted.current = false;
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
   }, []);
 
   const authTimeout = useRef<number | null>(null);
@@ -113,12 +157,14 @@ export default function Admin() {
     updateStatusMessage(authLoading ? 'Restoring saved admin session...' : 'Verifying admin access...');
 
     if (authLoading) {
+      setAdminState('loading-session');
       return;
     }
 
     if (!authUser) {
       addDebugMessage('no auth user after restore');
       setIsAdmin(false);
+      setAdminState('ready');
       finishAuthCheck('No active session. Please sign in.');
       return;
     }
@@ -133,7 +179,7 @@ export default function Admin() {
     initializeAdmin(authUser);
   }, [authLoading, authUser]);
 
-  const fetchSubmissions = async () => {
+  const fetchSubmissions = async (signal?: AbortSignal) => {
     addDebugMessage('submissions fetch started');
     console.log('Admin: fetchSubmissions started');
     try {
@@ -164,6 +210,7 @@ export default function Admin() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        signal,
       });
 
       const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
@@ -220,7 +267,7 @@ export default function Admin() {
         const fallback = await supabase
           .from('profiles')
           .select('id, email, is_admin, created_at');
-        usersData = fallback.data;
+        usersData = fallback.data as any;
         error = fallback.error;
 
         if (!error && usersData) {
