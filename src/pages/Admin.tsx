@@ -1,12 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Connect from './Connect';
 import { useAuth } from '../contexts/AuthContext';
 
+const ADMIN_CACHE_KEY = 'nexara_admin_status';
+
 export default function Admin() {
+  const navigate = useNavigate();
   const isMounted = useRef(true);
   const currentInitId = useRef(0);
   const abortController = useRef<AbortController | null>(null);
+  const backgroundValidationInProgress = useRef(false);
   const { user: authUser, loading: authLoading } = useAuth();
   const adminInitUserId = useRef<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -21,6 +26,36 @@ export default function Admin() {
 
   const addDebugMessage = (msg: string) => {
     setDebugMessages(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+  };
+
+  const saveAdminStatusToCache = () => {
+    try {
+      localStorage.setItem(ADMIN_CACHE_KEY, 'true');
+      console.log('Admin: saved admin status to cache');
+      addDebugMessage('admin status cached');
+    } catch (err) {
+      console.warn('Admin: failed to save admin status to cache:', err);
+    }
+  };
+
+  const clearAdminCache = () => {
+    try {
+      localStorage.removeItem(ADMIN_CACHE_KEY);
+      console.log('Admin: cleared admin status cache');
+      addDebugMessage('admin cache cleared');
+    } catch (err) {
+      console.warn('Admin: failed to clear admin cache:', err);
+    }
+  };
+
+  const getCachedAdminStatus = (): boolean => {
+    try {
+      const cached = localStorage.getItem(ADMIN_CACHE_KEY);
+      return cached === 'true';
+    } catch (err) {
+      console.warn('Admin: failed to read admin cache:', err);
+      return false;
+    }
   };
 
   const finishAuthCheck = (message = '', initId?: number) => {
@@ -59,75 +94,79 @@ export default function Admin() {
       return;
     }
 
+    // Check cache first for instant hydration
+    const cachedAdmin = getCachedAdminStatus();
+    if (cachedAdmin) {
+      console.log('Admin: cache hit - instant hydration');
+      addDebugMessage('cache hit - instant hydration');
+      setIsAdmin(true);
+      setAuthChecked(true);
+      setAdminState('ready');
+      setLoading(false);
+      updateStatusMessage('Loaded from cache. Validating in background...');
+
+      // Run background validation without blocking UI
+      backgroundValidateAdmin(user, initId);
+      return;
+    }
+
+    // No cache: perform normal initialization
+    console.log('Admin: no cache - performing full check');
     setLoading(true);
     setAuthChecked(false);
-    setAdminState('loading-session');
-    updateStatusMessage('Waiting for session to stabilize...');
-
-    // Create a 5-second timeout for the admin check
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Admin check timed out (5s) - Request took too long')), 5000)
-    );
+    setAdminState('verifying-admin');
+    updateStatusMessage('Verifying admin access...');
+    addDebugMessage('admin check started (no cache)');
 
     try {
-      // Wrap the entire admin check in Promise.race with timeout
-      const adminCheckPromise = (async () => {
-        // Session Guard: Use user object from context (already verified)
-        if (!user.id) {
-          console.log('Admin: user missing id, cannot proceed');
-          addDebugMessage('check-failed: user missing id');
-          updateStatusMessage('Invalid user session. Please refresh and try again.');
-          setIsAdmin(false);
-          finishAuthCheck('Invalid user session.');
-          return;
-        }
+      if (!user.id) {
+        console.log('Admin: user missing id, cannot proceed');
+        addDebugMessage('check-failed: user missing id');
+        updateStatusMessage('Invalid user session. Please refresh and try again.');
+        setIsAdmin(false);
+        finishAuthCheck('Invalid user session.');
+        return;
+      }
 
-        setAdminState('verifying-admin');
-        updateStatusMessage('Verifying admin access...');
-        addDebugMessage('admin check started');
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .maybeSingle();
 
-        console.log('Admin: querying profile for user id:', user.id);
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', user.id)
-          .maybeSingle();
+      if (error) {
+        console.error('Admin: profile query error:', error);
+        throw error;
+      }
 
-        if (error) {
-          console.error('Admin: profile query error:', error);
-          throw error;
-        }
+      console.log('Admin: profile query result:', profile);
+      addDebugMessage('profile query completed');
+      const normalizedEmail = user.email?.toLowerCase?.() ?? '';
+      const adminOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
+      const isOwner = adminOwnerEmails.includes(normalizedEmail);
+      console.log('Admin: isOwner check:', isOwner, 'user email:', user.email);
 
-        console.log('Admin: profile query result:', profile);
-        addDebugMessage('profile query completed');
-        const normalizedEmail = user.email?.toLowerCase?.() ?? '';
-        const adminOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
-        const isOwner = adminOwnerEmails.includes(normalizedEmail);
-        console.log('Admin: isOwner check:', isOwner, 'user email:', user.email);
+      if (!profile?.is_admin && !isOwner) {
+        console.log('Admin: not admin, showing error');
+        addDebugMessage('check-failed: not admin');
+        updateStatusMessage('Admin access denied for this account.');
+        setIsAdmin(false);
+        finishAuthCheck('You do not have admin access with this account.');
+        return;
+      }
 
-        if (!profile?.is_admin && !isOwner) {
-          console.log('Admin: not admin, showing error');
-          addDebugMessage('check-failed: not admin');
-          updateStatusMessage('Admin access denied for this account.');
-          setIsAdmin(false);
-          finishAuthCheck('You do not have admin access with this account.');
-          return;
-        }
-
-        console.log('Admin: user is admin, fetching submissions');
-        addDebugMessage('admin check passed');
-        setIsAdmin(true);
-        setUnauthorizedMessage('');
-        updateStatusMessage('Admin access granted. Fetching submissions...');
-        finishAuthCheck('', initId);
-        await fetchSubmissions(abortController.current.signal);
-        await fetchUsers();
-        console.log('Admin: fetchUsers completed');
-        updateStatusMessage('Loaded admin data.');
-        addDebugMessage('check-completed');
-      })();
-
-      await Promise.race([adminCheckPromise, timeoutPromise]);
+      console.log('Admin: user is admin - saving to cache');
+      addDebugMessage('admin check passed - caching');
+      saveAdminStatusToCache();
+      setIsAdmin(true);
+      setUnauthorizedMessage('');
+      updateStatusMessage('Admin access granted. Fetching submissions...');
+      finishAuthCheck('', initId);
+      await fetchSubmissions(abortController.current.signal);
+      await fetchUsers();
+      console.log('Admin: fetchUsers completed');
+      updateStatusMessage('Loaded admin data.');
+      addDebugMessage('check-completed');
     } catch (err) {
       if (err.name === 'AbortError') {
         console.log('Admin: admin check aborted');
@@ -146,6 +185,76 @@ export default function Admin() {
         setAdminState('ready');
         console.log('Admin: initializeAdmin finally block - loading state cleared');
       }
+    }
+  };
+
+  const backgroundValidateAdmin = async (user: any, initId: number) => {
+    // Prevent concurrent background validations
+    if (backgroundValidationInProgress.current) {
+      console.log('Admin: background validation already in progress');
+      return;
+    }
+
+    backgroundValidationInProgress.current = true;
+    console.log('Admin: starting background validation');
+    addDebugMessage('background validation started');
+
+    try {
+      if (!user.id) {
+        throw new Error('User missing id');
+      }
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      const normalizedEmail = user.email?.toLowerCase?.() ?? '';
+      const adminOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
+      const isOwner = adminOwnerEmails.includes(normalizedEmail);
+
+      if (!profile?.is_admin && !isOwner) {
+        console.log('Admin: background validation failed - user no longer admin');
+        addDebugMessage('background validation failed: not admin');
+        
+        // User is no longer admin - clear cache and redirect silently
+        clearAdminCache();
+        setIsAdmin(false);
+        setUnauthorizedMessage('Your admin access has been revoked.');
+        if (isMounted.current) {
+          setTimeout(() => {
+            if (isMounted.current) {
+              navigate('/login');
+            }
+          }, 2000);
+        }
+        return;
+      }
+
+      console.log('Admin: background validation passed');
+      addDebugMessage('background validation passed');
+      updateStatusMessage('Admin status confirmed.');
+      
+      // Refresh data in background
+      await fetchSubmissions(abortController.current?.signal);
+      await fetchUsers();
+      
+    } catch (err) {
+      console.error('Admin: background validation error:', err);
+      addDebugMessage(`background validation error: ${err}`);
+      
+      // Silent failure - don't block the UI, but clear cache
+      clearAdminCache();
+      setUnauthorizedMessage('Background validation failed. Please refresh if you experience issues.');
+    } finally {
+      backgroundValidationInProgress.current = false;
+      console.log('Admin: background validation completed');
+      addDebugMessage('background validation completed');
     }
   };
 
