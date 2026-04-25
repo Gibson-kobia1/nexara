@@ -206,10 +206,10 @@ const PlatformCard = ({ platform, index, onConnect }: any) => {
 // --- HERO ---
 const Hero = ({ showToast, onConnect }: any) => {
   const platforms = [
+    { name: 'Noones', icon: '/logos/noonesicon.png', desc: 'Connect global P2P liquidity with a more credible provider surface.', status: 'Available', cta: 'Link Platform' },
     { name: 'Coinbase', icon: '/logos/coinbaselogo.svg', desc: 'Access Prime and Advanced Trade with a clean, verified account handoff.', status: 'Available', cta: 'Connect Account' },
     { name: 'Binance', icon: '/logos/Binance-Icon-Logo.wine.svg', desc: 'Sync spot and futures liquidity through a polished exchange connection flow.', status: 'Available', cta: 'Connect Account' },
     { name: 'Bybit', icon: '/logos/bybit-seeklogo.svg', desc: 'Unified trading account (UTA) access with a premium, native-feeling touchpoint.', status: 'Beta', cta: 'Link Platform' },
-    { name: 'Noones', icon: '/logos/noonesicon.png', desc: 'Connect global P2P liquidity with a more credible provider surface.', status: 'Available', cta: 'Link Platform' },
     { name: 'Ext. Wallets', icon: Wallet, desc: 'Link MetaMask, Ledger, and custom RPCs.', status: 'Beta', cta: 'View Support' },
     { name: 'Bank Rails', icon: CreditCard, desc: 'ACH, SEPA, and wire transfer endpoints.', status: 'Planned', cta: 'Learn More' }
   ];

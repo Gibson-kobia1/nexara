@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
-const platformOptions = ['Coinbase', 'Binance', 'Bybit', 'Noones'];
+const platformOptions = ['Noones', 'Coinbase', 'Binance', 'Bybit'];
 
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
