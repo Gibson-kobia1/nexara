@@ -69,7 +69,8 @@ export default function Admin() {
 
       console.log('Admin: profile query result:', profile);
       const normalizedEmail = user.email?.toLowerCase?.() ?? '';
-      const isOwner = normalizedEmail === 'gibsonkobia@gmail.com';
+      const adminOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
+      const isOwner = adminOwnerEmails.includes(normalizedEmail);
       console.log('Admin: isOwner check:', isOwner, 'user email:', user.email);
 
       if (!profile?.is_admin && !isOwner) {

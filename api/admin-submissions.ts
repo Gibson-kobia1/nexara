@@ -104,7 +104,8 @@ export default async function handler(req: any, res: any) {
       console.warn(`${logPrefix} Profile query fallback failed:`, profileError);
     }
 
-    const isOwner = user.email === 'gibsonkobia@gmail.com';
+    const allowedOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
+    const isOwner = allowedOwnerEmails.includes(user.email || '');
     const isAdmin = (profile?.is_admin ?? false) || isOwner;
 
     console.log(`${logPrefix} Admin check - is_admin: ${profile?.is_admin}, isOwner: ${isOwner}, result: ${isAdmin}`);
