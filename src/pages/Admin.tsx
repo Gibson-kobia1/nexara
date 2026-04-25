@@ -5,7 +5,7 @@ import Connect from './Connect';
 import { useAuth } from '../contexts/AuthContext';
 
 const ADMIN_CACHE_KEY = 'nexara_admin_status';
-const SUBMISSIONS_CACHE_KEY = 'nexara_cached_submissions';
+const REQUESTS_CACHE_KEY = 'nexara_cached_platform_requests';
 const USERS_CACHE_KEY = 'nexara_cached_users';
 
 export default function Admin() {
@@ -42,13 +42,13 @@ export default function Admin() {
     }
   };
 
-  const saveRowsToCache = (cachedRows: any[]) => {
+  const saveRequestsToCache = (cachedRows: any[]) => {
     try {
-      localStorage.setItem(SUBMISSIONS_CACHE_KEY, JSON.stringify(cachedRows));
-      console.log('Admin: saved submissions cache');
-      addDebugMessage('submissions cache updated');
+      localStorage.setItem(REQUESTS_CACHE_KEY, JSON.stringify(cachedRows));
+      console.log('Admin: saved platform request cache');
+      addDebugMessage('platform request cache updated');
     } catch (err) {
-      console.warn('Admin: failed to save submissions cache:', err);
+      console.warn('Admin: failed to save platform request cache:', err);
     }
   };
 
@@ -65,7 +65,7 @@ export default function Admin() {
   const clearAdminCache = () => {
     try {
       localStorage.removeItem(ADMIN_CACHE_KEY);
-      localStorage.removeItem(SUBMISSIONS_CACHE_KEY);
+      localStorage.removeItem(REQUESTS_CACHE_KEY);
       localStorage.removeItem(USERS_CACHE_KEY);
       console.log('Admin: cleared admin status and data cache');
       addDebugMessage('admin cache cleared');
@@ -84,12 +84,12 @@ export default function Admin() {
     }
   };
 
-  const getCachedRows = (): any[] => {
+  const getCachedRequests = (): any[] => {
     try {
-      const cached = localStorage.getItem(SUBMISSIONS_CACHE_KEY);
+      const cached = localStorage.getItem(REQUESTS_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     } catch (err) {
-      console.warn('Admin: failed to read submissions cache:', err);
+      console.warn('Admin: failed to read platform request cache:', err);
       return [];
     }
   };
@@ -108,7 +108,7 @@ export default function Admin() {
     const cachedAdmin = getCachedAdminStatus();
     if (!cachedAdmin) return;
 
-    const cachedRows = getCachedRows();
+    const cachedRows = getCachedRequests();
     const cachedUsers = getCachedUsers();
 
     console.log('Admin: hydrating cached admin data instantly');
@@ -121,7 +121,7 @@ export default function Admin() {
     setAdminState('ready');
     setHasInitialLoadCompleted(true);
     setUnauthorizedMessage('');
-    updateStatusMessage('Loaded cached admin data. Validating in background...');
+    updateStatusMessage('Loaded cached platform request data. Validating in background...');
   }, []);
 
   const finishAuthCheck = (message = '', initId?: number) => {
@@ -226,7 +226,7 @@ export default function Admin() {
       saveAdminStatusToCache();
       setIsAdmin(true);
       setUnauthorizedMessage('');
-      updateStatusMessage('Admin access granted. Fetching submissions...');
+      updateStatusMessage('Admin access granted. Fetching platform requests...');
       finishAuthCheck('', initId);
       await fetchSubmissions(abortController.current.signal);
       await fetchUsers();
@@ -409,25 +409,38 @@ export default function Admin() {
           updatedRows.unshift(mappedRow);
         }
 
-        saveRowsToCache(updatedRows);
+        saveRequestsToCache(updatedRows);
         return updatedRows;
       });
     };
 
     const channel = supabase
-      .channel('admin-submissions-realtime')
+      .channel('admin-platform-requests-realtime')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'submissions' },
+        { event: 'INSERT', schema: 'public', table: 'platform_connection_requests' },
         handleRealtimeSubmission
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'submissions' },
+        { event: 'UPDATE', schema: 'public', table: 'platform_connection_requests' },
         handleRealtimeSubmission
       );
 
-    channel.subscribe();
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('Admin: realtime channel subscribed successfully');
+      } else if (status === 'CLOSED') {
+        console.error('Admin: realtime channel closed');
+      } else if (status === 'TIMED_OUT') {
+        console.error('Admin: realtime channel timed out');
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('Admin: realtime channel error');
+      } else {
+        console.log('Admin: realtime channel status:', status);
+      }
+    });
+
     realtimeChannel.current = channel;
 
     return () => {
@@ -499,7 +512,7 @@ export default function Admin() {
       addDebugMessage(`submissions fetch success: ${mergedRows.length} submissions`);
       addDebugMessage(`admin status: email=${adminEmail}, isOwner=${isOwner}`);
       setRows(mergedRows);
-      saveRowsToCache(mergedRows);
+      saveRequestsToCache(mergedRows);
       setHasInitialLoadCompleted(true);
     } catch (err) {
       console.error('Admin: Error loading admin submissions:', err);
@@ -588,9 +601,16 @@ export default function Admin() {
           <button 
             onClick={async () => {
               console.log('Admin: sign out clicked');
-              await supabase.auth.signOut();
-              console.log('Admin: sign out completed, reloading');
-              window.location.reload();
+              try {
+                await supabase.auth.signOut();
+                console.log('Admin: sign out completed');
+              } catch (err) {
+                console.error('Admin: sign out failed:', err);
+              } finally {
+                localStorage.clear();
+                console.log('Admin: cleared localStorage after sign out');
+                window.location.href = '/login';
+              }
             }}
             className="text-sm text-slate-400 hover:text-white underline underline-offset-4"
           >

