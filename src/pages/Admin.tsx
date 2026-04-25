@@ -100,22 +100,57 @@ export default function Admin() {
     }
   };
 
+  const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const getPersistedSession = async () => {
+    const maxRetries = 4;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Admin: getSession error:', error);
+        lastError = error;
+      }
+
+      if (session?.user) {
+        console.log('Admin: session loaded:', { user: { id: session.user.id, email: session.user.email }, attempt });
+        addDebugMessage(`session found: ${session.user.email} / ${session.user.id}`);
+        return session;
+      }
+
+      console.log(`Admin: no session found (attempt ${attempt}/${maxRetries})`);
+      addDebugMessage(`session missing, retrying (${attempt}/${maxRetries})`);
+      if (attempt < maxRetries) {
+        await pause(500);
+      }
+    }
+
+    if (lastError) {
+      throw lastError;
+    }
+
+    return null;
+  };
+
   useEffect(() => {
     addDebugMessage('page mounted');
     console.log('Admin: useEffect triggered');
+
     const loadSession = async () => {
       addDebugMessage('session re-check started');
+      updateStatusMessage('Checking saved admin session...');
       console.log('Admin: loading session');
+
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) console.error('Admin: getSession error:', error);
-        console.log('Admin: session loaded:', session ? { user: { id: session.user.id, email: session.user.email } } : null);
-        addDebugMessage(session ? `session found: ${session.user.email} / ${session.user.id}` : 'no session');
+        const session = await getPersistedSession();
         if (session?.user) {
           await initializeAdmin(session.user);
-        } else {
-          finishAuthCheck('No active session. Please sign in.');
+          return;
         }
+
+        console.log('Admin: no active session after retries');
+        updateStatusMessage('No active admin session found. Please sign in.');
+        finishAuthCheck('No active session. Please sign in.');
       } catch (err) {
         console.error('Admin: loadSession failed:', err);
         addDebugMessage(`loadSession failed: ${err}`);
@@ -151,9 +186,23 @@ export default function Admin() {
     console.log('Admin: fetchSubmissions started');
     try {
       updateStatusMessage('Loading submissions...');
-      // Get the current session to get the token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
+
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Admin: getSession error before fetchSubmissions:', sessionError);
+      }
+
+      if (session?.refresh_token) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError && refreshed.session) {
+          session = refreshed.session;
+          console.log('Admin: session refreshed before fetchSubmissions');
+        } else if (refreshError) {
+          console.warn('Admin: refreshSession warning:', refreshError);
+        }
+      }
+
+      if (!session) {
         throw new Error('No active session');
       }
 
