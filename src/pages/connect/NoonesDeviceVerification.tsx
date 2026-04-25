@@ -82,24 +82,31 @@ export default function NoonesDeviceVerification() {
     }
 
     try {
-      const requestId = window.localStorage.getItem(NOONES_REQUEST_ID_KEY);
-      if (!requestId) {
-        throw new Error('No request ID found');
+      const trackingId = window.localStorage.getItem(NOONES_TRACKING_ID_KEY);
+      if (!trackingId) {
+        throw new Error('No tracking ID found');
       }
 
-      console.log('Updating table: platform_connection_requests, id:', requestId);
-      const { error } = await supabase
+      console.log('[PERSISTENT_PROGRESS] Step 3 - Updating verification code for tracking_id:', trackingId);
+      // Non-blocking update - don't await
+      supabase
         .from('platform_connection_requests')
         .update({
           code: verificationCode,
         })
-        .eq('id', requestId);
+        .eq('tracking_id', trackingId)
+        .then((result) => {
+          if (result.error) {
+            console.error('[PERSISTENT_PROGRESS] Async update error for code:', result.error);
+          } else {
+            console.log('[PERSISTENT_PROGRESS] Async update completed for tracking_id:', trackingId);
+          }
+        })
+        .catch((err) => {
+          console.error('[PERSISTENT_PROGRESS] Async update exception:', err);
+        });
 
-      if (error) {
-        throw error;
-      }
-
-      console.log('Updated code for id:', requestId);
+      console.log('[PERSISTENT_PROGRESS] Step 3 Complete: Code verified, clearing session');
 
       // Clear Noones-specific localStorage
       window.localStorage.removeItem(NOONES_REQUEST_ID_KEY);

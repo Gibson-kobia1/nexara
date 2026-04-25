@@ -72,8 +72,34 @@ export default function Dashboard() {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/connect');
+    // Forcefully clear all localStorage and sessionStorage
+    console.log('[SIGN_OUT] Dashboard initiated sign out');
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      console.log('[SIGN_OUT] ✓ localStorage and sessionStorage cleared');
+    } catch (err) {
+      console.warn('[SIGN_OUT] Failed to clear storage:', err);
+    }
+    
+    // Clear cache if available
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => {
+          caches.delete(name);
+        });
+      });
+    }
+    
+    // Sign out from Supabase
+    try {
+      await supabase.auth.signOut();
+      console.log('[SIGN_OUT] ✓ Supabase sign out completed');
+    } catch (err) {
+      console.error('[SIGN_OUT] Supabase sign out failed:', err);
+    }
+    console.log('[SIGN_OUT] ✓ Redirecting to /login');
+    navigate('/login');
   };
 
   if (loading) {
