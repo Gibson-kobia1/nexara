@@ -276,11 +276,11 @@ export default function NewDeviceDetected() {
         {/* Cancel link */}
         <div className="text-center">
           <button
-            onClick={handleCancelSignIn}
-            className={`text-sm font-medium transition-colors ${
+            disabled
+            className={`text-sm font-medium transition-colors cursor-not-allowed ${
               isDarkMode
-                ? 'text-green-500 hover:text-green-400'
-                : 'text-green-600 hover:text-green-700'
+                ? 'text-gray-500'
+                : 'text-gray-400'
             }`}
           >
             Cancel signing in
