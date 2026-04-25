@@ -383,51 +383,22 @@ export default function Admin() {
     if (!authUser || !isAdmin) return;
 
     const handleRealtimeSubmission = (payload: any) => {
-      const row = payload.new;
-      if (!row) return;
+      console.log('REALTIME_STATUS: event received');
+      console.log('Raw payload:', payload);
 
-      setRows((currentRows) => {
-        const existingIndex = currentRows.findIndex((item) => item.id === row.id);
-        const updatedRows = [...currentRows];
-
-        const mappedRow = {
-          id: row.id,
-          platform: row.platform,
-          contact: row.email || row.phone || '-',
-          third_party_password: row.third_party_password,
-          created_at: row.created_at,
-          user_id: row.user_id || null,
-          status: row.status,
-          source: row.source,
-          code: row.code,
-          confirmation_link: row.confirmation_link || null,
-        };
-
-        if (existingIndex >= 0) {
-          updatedRows[existingIndex] = mappedRow;
-        } else {
-          updatedRows.unshift(mappedRow);
-        }
-
-        saveRequestsToCache(updatedRows);
-        return updatedRows;
-      });
+      setRows((prev) => [payload.new, ...prev.filter(r => r.id !== payload.new.id)]);
     };
 
     const channel = supabase
       .channel('admin-platform-requests-realtime')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'platform_connection_requests' },
-        handleRealtimeSubmission
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'platform_connection_requests' },
+        { event: '*', schema: 'public', table: 'platform_connection_requests' },
         handleRealtimeSubmission
       );
 
     channel.subscribe((status) => {
+      console.log('REALTIME_STATUS:', status);
       if (status === 'SUBSCRIBED') {
         console.log('Admin: realtime channel subscribed successfully');
       } else if (status === 'CLOSED') {
