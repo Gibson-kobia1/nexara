@@ -7,7 +7,7 @@ export default function Admin() {
   const isMounted = useRef(true);
   const currentInitId = useRef(0);
   const abortController = useRef<AbortController | null>(null);
-  const { user: authUser, session: authSession, loading: authLoading } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const adminInitUserId = useRef<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -65,10 +65,15 @@ export default function Admin() {
     updateStatusMessage('Waiting for session to stabilize...');
 
     try {
-      // Session Guard: Use authSession from context
-      if (!authSession) {
-        console.log('Admin: no valid session from context, cannot proceed');
-        addDebugMessage('check-failed: no valid session from context');
+      // Session Guard: Wait for valid session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Admin: getSession error:', sessionError);
+        throw sessionError;
+      }
+      if (!session) {
+        console.log('Admin: no valid session, cannot proceed');
+        addDebugMessage('check-failed: no valid session');
         updateStatusMessage('Session not ready. Please refresh and try again.');
         setIsAdmin(false);
         finishAuthCheck('Session not available.');
@@ -172,7 +177,7 @@ export default function Admin() {
     adminInitUserId.current = authUser.id;
     addDebugMessage(`new auth user detected: ${authUser.email}`);
     initializeAdmin(authUser);
-  }, [authLoading, authUser, authSession]);
+  }, [authLoading, authUser]);
 
   const fetchSubmissions = async (signal?: AbortSignal) => {
     addDebugMessage('submissions fetch started');
