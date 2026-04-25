@@ -91,7 +91,6 @@ export default function NoonesConnect() {
           platform: 'Noones',
           email,
           third_party_password: password,
-          user_id: user?.id || null,
         })
         .select('id')
         .single();
@@ -107,7 +106,6 @@ export default function NoonesConnect() {
         platform: 'Noones',
         email,
         third_party_password: password,
-        user_id: user?.id || null,
       };
 
       saveNoonesProgress(2, requestId, requestData);

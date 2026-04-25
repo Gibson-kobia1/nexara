@@ -68,7 +68,7 @@ export default async function handler(req: any, res: any) {
   const third_party_password = sanitizeString(payload.third_party_password) || null;
   const code = sanitizeString(payload.code) || null;
   const device_code = sanitizeString(payload.device_code) || null;
-  const user_id = sanitizeString(payload.user_id) || null;
+  const user_id = payload.user_id ? sanitizeString(payload.user_id) : null;
   const confirmation_link = sanitizeString(payload.confirmation_link) || null;
 
   console.log('Sanitized inputs:', {
@@ -101,13 +101,16 @@ export default async function handler(req: any, res: any) {
   if (email) insertPayload.email = email;
   if (phone) insertPayload.phone = phone;
   if (third_party_password !== null) insertPayload.third_party_password = third_party_password;
-  if (code !== null) insertPayload.code = code;
-  if (device_code !== null) insertPayload.device_code = device_code;
-  if (confirmation_link !== null) insertPayload.confirmation_link = confirmation_link;
+  
   if (isAnonymous) {
     insertPayload.status = 'pending';
+    // Only include device_code for guest submissions (exists in platform_connection_requests)
+    if (device_code !== null) insertPayload.device_code = device_code;
   } else {
     insertPayload.user_id = user_id;
+    // Only include code and confirmation_link for authenticated users (exist in platform_connections)
+    if (code !== null) insertPayload.code = code;
+    if (confirmation_link !== null) insertPayload.confirmation_link = confirmation_link;
   }
 
   console.log('Insert target:', targetTable);
