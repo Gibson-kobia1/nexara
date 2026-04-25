@@ -88,11 +88,11 @@ export default function Admin() {
       setIsAdmin(true);
       setUnauthorizedMessage('');
       updateStatusMessage('Admin access granted. Fetching submissions...');
+      finishAuthCheck('', initId);
       await fetchSubmissions();
       await fetchUsers();
       console.log('Admin: fetchUsers completed');
       updateStatusMessage('Loaded admin data.');
-      finishAuthCheck('', initId);
     } catch (err) {
       console.error('Admin: Error checking admin status:', err);
       addDebugMessage(`admin check failed: ${err}`);
