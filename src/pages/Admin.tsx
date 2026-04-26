@@ -27,6 +27,41 @@ export default function Admin() {
   const [statusMessage, setStatusMessage] = useState('');
   const [debugMessages, setDebugMessages] = useState<string[]>([]);
   const [hasInitialLoadCompleted, setHasInitialLoadCompleted] = useState(false);
+  const [syncDelayed, setSyncDelayed] = useState(false);
+
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const loadCachedData = () => {
+    const cachedRows = getCachedRequests();
+    const cachedUsers = getCachedUsers();
+
+    if (cachedRows.length) {
+      setRows(cachedRows);
+    }
+
+    if (cachedUsers.length) {
+      setUsers(cachedUsers);
+    }
+
+    if (cachedRows.length || cachedUsers.length) {
+      setHasInitialLoadCompleted(true);
+    }
+
+    return { cachedRows, cachedUsers };
+  };
+
+  const enableCacheFallback = (message = 'Sync delayed. Showing cached data.') => {
+    if (!isMounted.current) return;
+
+    setSyncDelayed(true);
+    updateStatusMessage(message);
+    setHasInitialLoadCompleted(true);
+
+    const { cachedRows, cachedUsers } = loadCachedData();
+    if (cachedRows.length || cachedUsers.length) {
+      addDebugMessage('fallback to cached data');
+    }
+  };
 
   const addDebugMessage = (msg: string) => {
     setDebugMessages(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
@@ -154,11 +189,12 @@ export default function Admin() {
     if (cachedAdmin) {
       console.log('Admin: cache hit - instant hydration');
       addDebugMessage('cache hit - instant hydration');
+      loadCachedData();
       setIsAdmin(true);
       setAuthChecked(true);
       setAdminState('ready');
       setLoading(true);
-      updateStatusMessage('Loaded from cache. Validating and refreshing data...');
+      updateStatusMessage('Loaded cached data. Validating and refreshing data...');
 
       // Run background validation while keeping the loading state until fresh data arrives
       backgroundValidateAdmin(user, initId);
@@ -428,8 +464,11 @@ export default function Admin() {
   const fetchSubmissions = async (signal?: AbortSignal) => {
     addDebugMessage('submissions fetch started');
     console.log('Admin: fetchSubmissions started');
+    let timeoutId: number | null = null;
+
     try {
       updateStatusMessage('Loading submissions...');
+      setSyncDelayed(false);
 
       let token = authSession?.access_token;
       if (!token) {
@@ -444,15 +483,28 @@ export default function Admin() {
       }
 
       if (!token) {
+        addDebugMessage('No active session token found, retrying after delay');
+        await sleep(1000);
+
+        const { data: { session: retrySession }, error: retrySessionError } = await supabase.auth.getSession();
+        if (retrySessionError) {
+          console.error('Admin: getSession retry error before fetchSubmissions:', retrySessionError);
+        }
+
+        if (retrySession) {
+          token = retrySession.access_token;
+        }
+      }
+
+      if (!token) {
         throw new Error('No active session');
       }
 
       console.log('Admin: fetching submissions from backend');
-      
-      // Create a timeout promise that rejects after 10 seconds
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout - backend route not responding')), 10000)
-      );
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = window.setTimeout(() => reject(new Error('Request timeout - backend route not responding')), 5000);
+      });
 
       const fetchPromise = fetch('/api/admin-submissions', {
         method: 'GET',
@@ -463,7 +515,7 @@ export default function Admin() {
         signal,
       });
 
-      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+      const response = (await Promise.race([fetchPromise, timeoutPromise])) as Response;
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
@@ -493,12 +545,16 @@ export default function Admin() {
       setRows(mergedRows);
       saveRequestsToCache(mergedRows);
       setHasInitialLoadCompleted(true);
+      setSyncDelayed(false);
     } catch (err) {
       console.error('Admin: Error loading admin submissions:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       addDebugMessage(`submissions fetch failed: ${errorMsg}`);
-      updateStatusMessage(`Submissions fetch failed: ${errorMsg}`);
+      enableCacheFallback();
     } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
       console.log('Admin: fetchSubmissions finally, setting loading false');
       if (isMounted.current) {
         setLoading(false);
@@ -591,6 +647,11 @@ export default function Admin() {
             <p className="text-sm text-slate-300">
               Platform connection credentials submitted by users.
             </p>
+            {syncDelayed && (
+              <div className="mt-3 inline-flex items-center rounded-full border border-yellow-500/30 bg-yellow-900/20 px-3 py-1 text-xs text-yellow-200">
+                Sync delayed. Showing cached data.
+              </div>
+            )}
           </div>
           <button 
             onClick={async () => {
