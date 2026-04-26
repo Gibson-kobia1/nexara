@@ -153,6 +153,7 @@ export default async function handler(req: any, res: any) {
         'code',
         'confirmation_link',
         'device_code',
+        'tracking_id',
       ],
       'created_at'
     );
@@ -191,6 +192,7 @@ export default async function handler(req: any, res: any) {
         code: row.code,
         confirmation_link: row.confirmation_link || null,
         device_code: row.device_code,
+        tracking_id: row.tracking_id || null,
       })),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
