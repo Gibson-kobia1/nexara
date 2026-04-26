@@ -701,24 +701,6 @@ export default function Admin() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
-      <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5 mb-4">
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Debug Messages</h2>
-            <p className="text-sm text-slate-400">Admin session and fetch diagnostics.</p>
-          </div>
-          {statusMessage && (
-            <div className="rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-200">
-              {statusMessage}
-            </div>
-          )}
-        </div>
-        <div className="text-sm text-slate-300 max-h-40 overflow-y-auto">
-          {debugMessages.map((msg, idx) => (
-            <div key={idx} className="mb-1">{msg}</div>
-          ))}
-        </div>
-      </div>
       {renderContent()}
     </main>
   );
