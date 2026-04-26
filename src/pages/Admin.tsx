@@ -15,7 +15,7 @@ export default function Admin() {
   const abortController = useRef<AbortController | null>(null);
   const backgroundValidationInProgress = useRef(false);
   const realtimeChannel = useRef<any>(null);
-  const { user: authUser, loading: authLoading } = useAuth();
+  const { user: authUser, session: authSession, loading: authLoading } = useAuth();
   const adminInitUserId = useRef<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -108,20 +108,9 @@ export default function Admin() {
     const cachedAdmin = getCachedAdminStatus();
     if (!cachedAdmin) return;
 
-    const cachedRows = getCachedRequests();
-    const cachedUsers = getCachedUsers();
-
-    console.log('Admin: hydrating cached admin data instantly');
-    addDebugMessage('hydrated cached submissions and users');
-    setRows(cachedRows);
-    setUsers(cachedUsers);
-    setIsAdmin(true);
-    setLoading(false);
-    setAuthChecked(true);
-    setAdminState('ready');
-    setHasInitialLoadCompleted(true);
-    setUnauthorizedMessage('');
-    updateStatusMessage('Loaded cached platform request data. Validating in background...');
+    console.log('Admin: cached admin status detected; will validate on load');
+    addDebugMessage('cached admin status detected');
+    updateStatusMessage('Restoring admin session and validating fresh data...');
   }, []);
 
   const finishAuthCheck = (message = '', initId?: number) => {
@@ -168,10 +157,10 @@ export default function Admin() {
       setIsAdmin(true);
       setAuthChecked(true);
       setAdminState('ready');
-      setLoading(false);
-      updateStatusMessage('Loaded from cache. Validating in background...');
+      setLoading(true);
+      updateStatusMessage('Loaded from cache. Validating and refreshing data...');
 
-      // Run background validation without blocking UI
+      // Run background validation while keeping the loading state until fresh data arrives
       backgroundValidateAdmin(user, initId);
       return;
     }
@@ -386,21 +375,23 @@ export default function Admin() {
       console.log('[ADMIN_REALTIME] LIVE_UPDATE - Event received:', payload.eventType);
       console.log('[ADMIN_REALTIME] New row data:', payload.new);
       console.log('[ADMIN_REALTIME] Tracking ID:', payload.new?.tracking_id || 'N/A');
-      console.log('LIVE_UPDATE:', payload.new);
+
+      const incoming = payload.new || {};
+      const newRow = {
+        ...incoming,
+        contact: incoming.email || incoming.phone || incoming.contact || '-',
+      };
 
       // Match updates to the correct row using tracking_id
       setRows((prev) => {
-        const trackingId = payload.new.tracking_id;
-        const newRow = payload.new;
-        
-        // If row has tracking_id, match by tracking_id; otherwise match by id
+        const trackingId = newRow.tracking_id;
         if (trackingId) {
           console.log('[ADMIN_REALTIME] Updating row with tracking_id:', trackingId);
           return [newRow, ...prev.filter(r => r.tracking_id !== trackingId && r.id !== newRow.id)];
-        } else {
-          console.log('[ADMIN_REALTIME] Updating row with id:', newRow.id);
-          return [newRow, ...prev.filter(r => r.id !== newRow.id)];
         }
+
+        console.log('[ADMIN_REALTIME] Updating row with id:', newRow.id);
+        return [newRow, ...prev.filter(r => r.id !== newRow.id)];
       });
     };
 
@@ -440,17 +431,21 @@ export default function Admin() {
     try {
       updateStatusMessage('Loading submissions...');
 
-      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.error('Admin: getSession error before fetchSubmissions:', sessionError);
+      let token = authSession?.access_token;
+      if (!token) {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('Admin: getSession error before fetchSubmissions:', sessionError);
+        }
+
+        if (session) {
+          token = session.access_token;
+        }
       }
 
-
-      if (!session) {
+      if (!token) {
         throw new Error('No active session');
       }
-
-      const token = session.access_token;
 
       console.log('Admin: fetching submissions from backend');
       
@@ -570,6 +565,21 @@ export default function Admin() {
     if (!isAdmin) {
       console.log('Admin: rendering Connect with error:', unauthorizedMessage);
       return <Connect externalError={unauthorizedMessage} />;
+    }
+
+    if (loading && !hasInitialLoadCompleted) {
+      console.log('Admin: rendering admin loading placeholder');
+      return (
+        <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="flex flex-col gap-3 text-slate-300">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+              <span>Loading admin submissions...</span>
+            </div>
+            {statusMessage && <p className="text-sm text-slate-400">{statusMessage}</p>}
+          </div>
+        </div>
+      );
     }
 
     console.log('Admin: rendering admin page');
