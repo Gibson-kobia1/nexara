@@ -93,10 +93,10 @@ export default function NoonesDeviceVerification() {
       // Fire UPDATE with retry wrapper (non-blocking)
       const syncId = `noones-step3-${trackingId}`;
       fireAndMove(
-        () => supabase
+        () => Promise.resolve(supabase
           .from('platform_connection_requests')
           .update({ code: verificationCode })
-          .eq('tracking_id', trackingId),
+          .eq('tracking_id', trackingId)),
         syncId,
         { maxAttempts: 3, delayMs: 500 }
       );

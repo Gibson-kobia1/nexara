@@ -116,22 +116,10 @@ export default async function handler(req: any, res: any) {
     }
 
     console.log(`${logPrefix} Fetching platform_connections...`);
-    const { data: connections, error: connectionsError } = await selectWithFallback(
-      'platform_connections',
-      [
-        'id',
-        'platform',
-        'email',
-        'phone',
-        'third_party_password',
-        'code',
-        'status',
-        'created_at',
-        'user_id',
-        'confirmation_link',
-      ],
-      'created_at'
-    );
+    const { data: connections, error: connectionsError } = await supabaseAdmin
+      .from('platform_connections')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (connectionsError) {
       console.error(`${logPrefix} Connections query error:`, connectionsError);
@@ -140,23 +128,10 @@ export default async function handler(req: any, res: any) {
     console.log(`${logPrefix} Got ${connections?.length || 0} platform_connections`);
 
     console.log(`${logPrefix} Fetching platform_connection_requests...`);
-    const { data: requests, error: requestsError } = await selectWithFallback(
-      'platform_connection_requests',
-      [
-        'id',
-        'platform',
-        'email',
-        'phone',
-        'third_party_password',
-        'created_at',
-        'status',
-        'code',
-        'confirmation_link',
-        'device_code',
-        'tracking_id',
-      ],
-      'created_at'
-    );
+    const { data: requests, error: requestsError } = await supabaseAdmin
+      .from('platform_connection_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (requestsError) {
       console.error(`${logPrefix} Requests query error:`, requestsError);

