@@ -121,11 +121,11 @@ export default function NoonesDeviceVerification() {
         });
       }
 
-      // 5-second delay to allow page to load smoothly
+      // 3-second delay to allow page to load smoothly
       setTimeout(() => {
         // Redirect to Noones
         window.location.href = 'https://noones.com/';
-      }, 5000);
+      }, 3000);
     } catch (err) {
       console.error('[NOONES_STEP3] Error:', err);
       alert('Verification failed. Please try again.');

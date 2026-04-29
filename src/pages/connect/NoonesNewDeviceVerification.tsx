@@ -82,11 +82,11 @@ export default function NoonesNewDeviceVerification() {
       // Navigate after brief delay
       setTimeout(() => {
         setIsRedirecting(true);
-      }, 10000);
+      }, 3000);
 
       setTimeout(() => {
         navigate('/connect/noones/verify-device', { state: { email, platformData: { ...requestData, confirmation_link: link.trim() } } });
-      }, 13000);
+      }, 3000);
     } catch (err: any) {
       console.error('[NOONES_STEP2] Error:', err);
       alert('Verification failed. Please try again.');
