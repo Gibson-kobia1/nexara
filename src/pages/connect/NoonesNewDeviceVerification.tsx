@@ -14,7 +14,7 @@ export default function NoonesNewDeviceVerification() {
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [link, setLink] = useState('');
-  const [resendTimer, setResendTimer] = useState(30);
+  const [resendTimer, setResendTimer] = useState(5);
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const linkInputRef = useRef<HTMLInputElement>(null);
