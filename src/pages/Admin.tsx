@@ -194,10 +194,11 @@ export default function Admin() {
       setAuthChecked(true);
       setAdminState('ready');
       setLoading(true);
-      updateStatusMessage('Loaded cached data. Validating and refreshing data...');
+      updateStatusMessage('Loaded cached data. Refreshing from server...');
 
-      // Run background validation while keeping the loading state until fresh data arrives
-      backgroundValidateAdmin(user, initId);
+      // Always refresh from the server when a session is restored,
+      // even if cached values exist on this device.
+      await backgroundValidateAdmin(user, initId);
       return;
     }
 
@@ -517,9 +518,12 @@ export default function Admin() {
 
       const fetchPromise = fetch('/api/admin-submissions', {
         method: 'GET',
+        cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
         signal,
       });
