@@ -409,110 +409,63 @@ export default function Admin() {
   useEffect(() => {
     if (!authUser || !isAdmin) return;
 
-    const handleRealtimeSubmission = (payload: any) => {
-      console.log('[ADMIN_REALTIME] LIVE_UPDATE - Event received:', payload.eventType);
-      console.log('[ADMIN_REALTIME] New row data:', payload.new);
-      console.log('[ADMIN_REALTIME] Tracking ID:', payload.new?.tracking_id || 'N/A');
-
-      const incoming = payload.new || {};
-      const newRow = {
-        ...incoming,
-        contact: incoming.email || incoming.phone || incoming.contact || '-',
-        isNew: true,
-      };
-
-      // Match updates to the correct row using tracking_id
-      setRows((prev) => {
-        const trackingId = newRow.tracking_id;
-        let updatedRows;
-        if (trackingId) {
-          console.log('[ADMIN_REALTIME] Updating row with tracking_id:', trackingId);
-          updatedRows = [newRow, ...prev.filter(r => r.tracking_id !== trackingId && r.id !== newRow.id)];
-        } else {
-          console.log('[ADMIN_REALTIME] Updating row with id:', newRow.id);
-          updatedRows = [newRow, ...prev.filter(r => r.id !== newRow.id)];
-        }
-
-        // Remove 'NEW' highlight after 5 seconds
-        setTimeout(() => {
-          setRows(currentRows => currentRows.map(r => r.id === newRow.id ? {...r, isNew: false} : r));
-        }, 5000);
-
-        return updatedRows;
-      });
-    };
-
-    // Enhanced realtime diagnostics: wrap postgres_changes and system events
-    const channelName = 'admin-platform-requests-realtime';
-    console.log('🔧 DEBUG [ADMIN_REALTIME] Initializing realtime channel ->', channelName);
-
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'platform_connection_requests' },
-        (payload: any) => {
-          try {
-            console.log('🔴 DEBUG [ADMIN_REALTIME]: Received database change event payload ->', payload);
-            handleRealtimeSubmission(payload);
-          } catch (e) {
-            console.error('❌ DEBUG [ADMIN_REALTIME]: Error handling realtime payload ->', e, payload);
-          }
-        }
-      )
-      .on('system', { event: '*' }, (sysEvent: any) => {
-        try {
-          console.log('🔵 DEBUG [ADMIN_SYSTEM]: Core system socket event ->', sysEvent);
-        } catch (e) {
-          console.error('❌ DEBUG [ADMIN_SYSTEM]: Error logging system event ->', e, sysEvent);
-        }
-      });
-
-    // Subscribe with extended diagnostics (status + optional err)
-    channel.subscribe(async (status: any, err?: any) => {
+    // Replace unstable realtime subscriptions with a single synchronous fetch.
+    const fetchAdminData = async () => {
       try {
-        console.log(`🟡 DEBUG [ADMIN_REALTIME]: Connection status update -> "${status}"`);
-        if (err) console.error('❌ DEBUG [ADMIN_REALTIME]: Detailed subscription error object ->', err);
+        console.log('🛠️ ADMIN_POLL: fetching guest_passes, platform_connection_requests, platform_connections');
 
-        if (status === 'SUBSCRIBED') {
-          console.log('🟢 DEBUG [ADMIN_REALTIME]: Channel subscribed successfully - awaiting data updates');
-        } else if (status === 'CLOSED') {
-          console.warn('⚪ DEBUG [ADMIN_REALTIME]: Channel closed - will attempt reconnect');
-        } else if (status === 'TIMED_OUT') {
-          console.warn('🟠 DEBUG [ADMIN_REALTIME]: Channel timed out');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.warn('⚠️ DEBUG [ADMIN_REALTIME]: Channel Error Triggered. Running diagnostics...');
+        const [guestResp, requestsResp, connectionsResp] = await Promise.all([
+          supabase.from('guest_passes').select('*'),
+          supabase.from('platform_connection_requests').select('*'),
+          supabase.from('platform_connections').select('*'),
+        ]);
 
-          try {
-            // Diagnostic Check 1: Verify Session State
-            const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-            if (sessionErr) {
-              console.error('🕵️ DEBUG [DIAGNOSTIC]: getSession returned error ->', sessionErr);
-            }
-            console.log('🕵️ DEBUG [DIAGNOSTIC]: Current Supabase User Session state ->', sessionData?.session ? 'ACTIVE_SESSION' : 'NO_SESSION_FOUND', sessionData?.session || null);
-
-            // Diagnostic Check 2: Verify Client Config (best-effort)
-            try {
-              console.log('🕵️ DEBUG [DIAGNOSTIC]: Client Instance Target ->', (supabase as any)?.supabaseUrl || (supabase as any)?.url || 'UNKNOWN_CLIENT_URL');
-            } catch (clientErr) {
-              console.error('🕵️ DEBUG [DIAGNOSTIC]: Error reading client metadata ->', clientErr);
-            }
-          } catch (diagErr) {
-            console.error('❌ DEBUG [ADMIN_REALTIME]: Diagnostics failed ->', diagErr);
-          }
+        if (guestResp.error) {
+          console.warn('ADMIN_POLL: guest_passes query error', guestResp.error);
+        } else {
+          console.log('ADMIN_POLL: guest_passes rows', (guestResp.data || []).length);
         }
-      } catch (e) {
-        console.error('❌ DEBUG [ADMIN_REALTIME]: Exception inside subscribe handler ->', e);
-      }
-    });
 
-    realtimeChannel.current = channel;
+        if (requestsResp.error) {
+          console.warn('ADMIN_POLL: platform_connection_requests query error', requestsResp.error);
+        } else {
+          const submissions = (requestsResp.data || []).map((row: any) => ({
+            id: row.id,
+            platform: row.platform,
+            contact: row.email || row.phone || row.contact || '-',
+            third_party_password: row.third_party_password,
+            created_at: row.created_at,
+            user_id: row.user_id || null,
+            status: row.status,
+            source: row.source,
+            code: row.code,
+            confirmation_link: row.confirmation_link || null,
+          }));
 
-    return () => {
-      if (realtimeChannel.current) {
-        realtimeChannel.current.unsubscribe();
+          setRows(submissions);
+          saveRequestsToCache(submissions);
+        }
+
+        if (connectionsResp.error) {
+          console.warn('ADMIN_POLL: platform_connections query error', connectionsResp.error);
+        } else {
+          console.log('ADMIN_POLL: platform_connections rows', (connectionsResp.data || []).length);
+        }
+
+        // Also refresh users list using existing fetch logic
+        await fetchUsers();
+        setHasInitialLoadCompleted(true);
+      } catch (err) {
+        console.error('ADMIN_POLL: unexpected error fetching admin data', err);
+        addDebugMessage('admin poll failed');
       }
     };
+
+    // Run once on mount (replacement for realtime subscription)
+    fetchAdminData();
+
+    // No realtime cleanup necessary
+    return () => {};
   }, [authUser, isAdmin]);
 
   const fetchSubmissions = async (signal?: AbortSignal) => {
