@@ -15,6 +15,7 @@ export default function GuestPassGenerator() {
   const [unit, setUnit] = useState<'minutes' | 'hours'>('minutes');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
 
   const handleGenerate = async () => {
@@ -34,10 +35,12 @@ export default function GuestPassGenerator() {
       const passCode = generateSixDigitCode();
       const fullLink = `${window.location.origin}/watch/${passCode}`;
 
-      const { error } = await supabase.from('guest_passes').insert({
-        pass_code: passCode,
-        expires_at: expiresAt.toISOString(),
-      });
+      // Insert and return the inserted row so we can immediately set the UI state
+      const { data, error, status } = await supabase
+        .from('guest_passes')
+        .insert({ pass_code: passCode, expires_at: expiresAt.toISOString() })
+        .select()
+        .maybeSingle();
 
       if (error) {
         console.error('GuestPassGenerator: insert error', error);
@@ -45,11 +48,22 @@ export default function GuestPassGenerator() {
         return;
       }
 
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(fullLink);
-      }
+      // If the insert was successful (HTTP 201) or data returned, set the link immediately
+      if (status === 201 || data) {
+        setGeneratedLink(fullLink);
+        // copy to clipboard as before
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try {
+            await navigator.clipboard.writeText(fullLink);
+          } catch (clipErr) {
+            console.warn('GuestPassGenerator: clipboard copy failed', clipErr);
+          }
+        }
 
-      setStatusMessage(`Guest pass created and copied to clipboard. Link: ${fullLink}`);
+        setStatusMessage(`Guest pass created and copied to clipboard. Link: ${fullLink}`);
+        setIsWorking(false); // immediately unset loading as requested
+        return;
+      }
     } catch (err) {
       console.error('GuestPassGenerator: unexpected error', err);
       setErrorMessage('An unexpected error occurred while generating the guest pass.');
