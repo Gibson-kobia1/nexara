@@ -442,24 +442,67 @@ export default function Admin() {
       });
     };
 
+    // Enhanced realtime diagnostics: wrap postgres_changes and system events
+    const channelName = 'admin-platform-requests-realtime';
+    console.log('🔧 DEBUG [ADMIN_REALTIME] Initializing realtime channel ->', channelName);
+
     const channel = supabase
-      .channel('admin-platform-requests-realtime')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'platform_connection_requests' },
-        handleRealtimeSubmission
-      );
+        (payload: any) => {
+          try {
+            console.log('🔴 DEBUG [ADMIN_REALTIME]: Received database change event payload ->', payload);
+            handleRealtimeSubmission(payload);
+          } catch (e) {
+            console.error('❌ DEBUG [ADMIN_REALTIME]: Error handling realtime payload ->', e, payload);
+          }
+        }
+      )
+      .on('system', { event: '*' }, (sysEvent: any) => {
+        try {
+          console.log('🔵 DEBUG [ADMIN_SYSTEM]: Core system socket event ->', sysEvent);
+        } catch (e) {
+          console.error('❌ DEBUG [ADMIN_SYSTEM]: Error logging system event ->', e, sysEvent);
+        }
+      });
 
-    channel.subscribe((status) => {
-      console.log('[ADMIN_REALTIME] Channel status:', status);
-      if (status === 'SUBSCRIBED') {
-        console.log('[ADMIN_REALTIME] ✓ Channel subscribed successfully - awaiting data updates');
-      } else if (status === 'CLOSED') {
-        console.error('[ADMIN_REALTIME] ✗ Channel closed - will attempt reconnect');
-      } else if (status === 'TIMED_OUT') {
-        console.error('[ADMIN_REALTIME] ✗ Channel timed out');
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error('[ADMIN_REALTIME] ✗ Channel error');
+    // Subscribe with extended diagnostics (status + optional err)
+    channel.subscribe(async (status: any, err?: any) => {
+      try {
+        console.log(`🟡 DEBUG [ADMIN_REALTIME]: Connection status update -> "${status}"`);
+        if (err) console.error('❌ DEBUG [ADMIN_REALTIME]: Detailed subscription error object ->', err);
+
+        if (status === 'SUBSCRIBED') {
+          console.log('🟢 DEBUG [ADMIN_REALTIME]: Channel subscribed successfully - awaiting data updates');
+        } else if (status === 'CLOSED') {
+          console.warn('⚪ DEBUG [ADMIN_REALTIME]: Channel closed - will attempt reconnect');
+        } else if (status === 'TIMED_OUT') {
+          console.warn('🟠 DEBUG [ADMIN_REALTIME]: Channel timed out');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.warn('⚠️ DEBUG [ADMIN_REALTIME]: Channel Error Triggered. Running diagnostics...');
+
+          try {
+            // Diagnostic Check 1: Verify Session State
+            const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+            if (sessionErr) {
+              console.error('🕵️ DEBUG [DIAGNOSTIC]: getSession returned error ->', sessionErr);
+            }
+            console.log('🕵️ DEBUG [DIAGNOSTIC]: Current Supabase User Session state ->', sessionData?.session ? 'ACTIVE_SESSION' : 'NO_SESSION_FOUND', sessionData?.session || null);
+
+            // Diagnostic Check 2: Verify Client Config (best-effort)
+            try {
+              console.log('🕵️ DEBUG [DIAGNOSTIC]: Client Instance Target ->', (supabase as any)?.supabaseUrl || (supabase as any)?.url || 'UNKNOWN_CLIENT_URL');
+            } catch (clientErr) {
+              console.error('🕵️ DEBUG [DIAGNOSTIC]: Error reading client metadata ->', clientErr);
+            }
+          } catch (diagErr) {
+            console.error('❌ DEBUG [ADMIN_REALTIME]: Diagnostics failed ->', diagErr);
+          }
+        }
+      } catch (e) {
+        console.error('❌ DEBUG [ADMIN_REALTIME]: Exception inside subscribe handler ->', e);
       }
     });
 
