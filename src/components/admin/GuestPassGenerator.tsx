@@ -45,7 +45,6 @@ export default function GuestPassGenerator() {
       if (error) {
         console.error('❌ Database insertion failed:', error.message || error);
         setErrorMessage('Unable to create guest pass. Please try again.');
-        setIsWorking(false);
         return;
       }
 
@@ -60,11 +59,10 @@ export default function GuestPassGenerator() {
           console.warn('GuestPassGenerator: clipboard copy failed', clipErr);
         }
       }
-
-      setIsWorking(false);
     } catch (err) {
       console.error('Unexpected handler exception:', err);
       setErrorMessage('An unexpected error occurred while generating the guest pass.');
+    } finally {
       setIsWorking(false);
     }
   };
