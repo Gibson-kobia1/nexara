@@ -4,6 +4,7 @@ import Connect from './pages/Connect';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Admin from './pages/Admin';
+import Watch from './pages/Watch';
 import LinkSuccess from './pages/LinkSuccess';
 import NewDeviceDetected from './pages/NewDeviceDetected';
 import CoinbaseConnect from './pages/connect/Coinbase';
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/connect/bybit" element={<BybitConnect />} />
             <Route path="/link-success" element={<LinkSuccess />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/watch/:code" element={<Watch />} />
           </Routes>
           <GlobalSyncIndicator />
         </Router>

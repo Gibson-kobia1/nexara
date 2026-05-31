@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Connect from './Connect';
+import GuestPassGenerator from '../components/admin/GuestPassGenerator';
 import { useAuth } from '../contexts/AuthContext';
 
 const ADMIN_CACHE_KEY = 'nexara_admin_status';
@@ -696,6 +697,7 @@ export default function Admin() {
             Sign Out
           </button>
         </div>
+        <GuestPassGenerator />
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="text-slate-400">
