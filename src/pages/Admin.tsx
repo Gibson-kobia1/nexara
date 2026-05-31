@@ -470,71 +470,25 @@ export default function Admin() {
 
   const fetchSubmissions = async (signal?: AbortSignal) => {
     addDebugMessage('submissions fetch started');
-    console.log('Admin: fetchSubmissions started');
-    let timeoutId: number | null = null;
+    console.log('Admin: fetchSubmissions started (direct supabase query)');
 
     try {
       updateStatusMessage('Loading submissions...');
       setSyncDelayed(false);
 
-      let token = authSession?.access_token;
-      if (!token) {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error('Admin: getSession error before fetchSubmissions:', sessionError);
-        }
+      // Directly query the active submissions table to avoid backend route instability
+      const { data: submissions, error } = await supabase
+        .from('platform_connection_requests')
+        .select('*');
 
-        if (session) {
-          token = session.access_token;
-        }
+      if (error) {
+        console.error('❌ FETCH ERROR DETAILS:', error);
+        addDebugMessage(`submissions fetch failed: ${error.message || String(error)}`);
+        enableCacheFallback();
+        return;
       }
 
-      if (!token) {
-        addDebugMessage('No active session token found, retrying after delay');
-        await sleep(1000);
-
-        const { data: { session: retrySession }, error: retrySessionError } = await supabase.auth.getSession();
-        if (retrySessionError) {
-          console.error('Admin: getSession retry error before fetchSubmissions:', retrySessionError);
-        }
-
-        if (retrySession) {
-          token = retrySession.access_token;
-        }
-      }
-
-      if (!token) {
-        throw new Error('No active session');
-      }
-
-      console.log('Admin: fetching submissions from backend');
-
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = window.setTimeout(() => reject(new Error('Request timeout - backend route not responding')), 5000);
-      });
-
-      const fetchPromise = fetch('/api/admin-submissions', {
-        method: 'GET',
-        cache: 'no-store',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
-        signal,
-      });
-
-      const response = (await Promise.race([fetchPromise, timeoutPromise])) as Response;
-
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        throw new Error(errorBody.error || `API error: ${response.status}`);
-      }
-
-      const { data: submissions, adminEmail, isOwner } = await response.json();
-
-      console.log('Admin: submissions response:', { count: submissions?.length, adminEmail, isOwner });
+      console.log('Admin: submissions query count:', (submissions || []).length);
 
       const mergedRows = (submissions || []).map((row: any) => ({
         id: row.id,
@@ -551,20 +505,16 @@ export default function Admin() {
 
       console.log('Admin: merged rows count:', mergedRows.length);
       addDebugMessage(`submissions fetch success: ${mergedRows.length} submissions`);
-      addDebugMessage(`admin status: email=${adminEmail}, isOwner=${isOwner}`);
       setRows(mergedRows);
       saveRequestsToCache(mergedRows);
       setHasInitialLoadCompleted(true);
       setSyncDelayed(false);
     } catch (err) {
-      console.error('Admin: Error loading admin submissions:', err);
+      console.error('❌ FETCH ERROR DETAILS:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       addDebugMessage(`submissions fetch failed: ${errorMsg}`);
       enableCacheFallback();
     } finally {
-      if (timeoutId) {
-        window.clearTimeout(timeoutId);
-      }
       console.log('Admin: fetchSubmissions finally, setting loading false');
       if (isMounted.current) {
         setLoading(false);
