@@ -30,44 +30,41 @@ export default function GuestPassGenerator() {
 
     setIsWorking(true);
     try {
+      console.log('🚀 DEBUG [HANDLER]: Initiating record generation request...');
+
+      const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
       const now = new Date();
       const expiresAt = new Date(now.getTime() + count * (unit === 'hours' ? 60 * 60 * 1000 : 60 * 1000));
-      const passCode = generateSixDigitCode();
-      const fullLink = `${window.location.origin}/watch/${passCode}`;
+      const fullLink = `${window.location.origin}/watch/${randomCode}`;
 
-      // Insert and return the inserted row so we can immediately set the UI state
-      const { data, error, status } = await supabase
+      const { data, error } = await supabase
         .from('guest_passes')
-        .insert({ pass_code: passCode, expires_at: expiresAt.toISOString() })
-        .select()
-        .maybeSingle();
+        .insert([{ pass_code: randomCode, expires_at: expiresAt.toISOString() }])
+        .select();
 
       if (error) {
-        console.error('GuestPassGenerator: insert error', error);
+        console.error('❌ Database insertion failed:', error.message || error);
         setErrorMessage('Unable to create guest pass. Please try again.');
+        setIsWorking(false);
         return;
       }
 
-      // If the insert was successful (HTTP 201) or data returned, set the link immediately
-      if (status === 201 || data) {
-        setGeneratedLink(fullLink);
-        // copy to clipboard as before
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          try {
-            await navigator.clipboard.writeText(fullLink);
-          } catch (clipErr) {
-            console.warn('GuestPassGenerator: clipboard copy failed', clipErr);
-          }
+      console.log('✅ Success! Core row added:', data);
+      setGeneratedLink(fullLink);
+      setStatusMessage(`Guest pass created and copied to clipboard. Link: ${fullLink}`);
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(fullLink);
+        } catch (clipErr) {
+          console.warn('GuestPassGenerator: clipboard copy failed', clipErr);
         }
-
-        setStatusMessage(`Guest pass created and copied to clipboard. Link: ${fullLink}`);
-        setIsWorking(false); // immediately unset loading as requested
-        return;
       }
+
+      setIsWorking(false);
     } catch (err) {
-      console.error('GuestPassGenerator: unexpected error', err);
+      console.error('Unexpected handler exception:', err);
       setErrorMessage('An unexpected error occurred while generating the guest pass.');
-    } finally {
       setIsWorking(false);
     }
   };
