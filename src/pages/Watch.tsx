@@ -1,111 +1,76 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
-type LivePayload = Record<string, any>;
-
 export default function Watch() {
-  const { code } = useParams<{ code: string }>();
-  const [isValid, setIsValid] = useState(false);
+  const location = useLocation();
+  const params = useParams<{ code?: string }>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isValid, setIsValid] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [events, setEvents] = useState<LivePayload[]>([]);
-  const channelRef = useRef<any>(null);
-
-  const normalizedCode = useMemo(() => (code || '').toUpperCase().trim(), [code]);
+  const [passData, setPassData] = useState<any>(null);
 
   useEffect(() => {
-    let isActive = true;
-    setIsLoading(true);
-    setErrorMessage('');
-    setIsValid(false);
-    setEvents([]);
-
-    if (!normalizedCode) {
-      setErrorMessage('This access link has expired or is invalid.');
-      setIsLoading(false);
-      return;
-    }
+    const searchParams = new URLSearchParams(location.search);
+    const passCodeFromQuery = searchParams.get('pass')?.trim();
+    const pathCode = params.code?.trim();
+    const passCode = passCodeFromQuery || pathCode || '';
 
     const validatePass = async () => {
-      const now = new Date().toISOString();
-      const { data, error } = await supabase
-        .from('guest_passes')
-        .select('id')
-        .eq('pass_code', normalizedCode)
-        .gt('expires_at', now)
-        .maybeSingle();
+      setIsLoading(true);
+      setErrorMessage('');
+      setIsValid(false);
+      setPassData(null);
 
-      if (!isActive) return;
-
-      if (error) {
-        console.error('Watch: guest pass validation error', error);
-        setErrorMessage('This access link has expired or is invalid.');
+      if (!passCode) {
+        setErrorMessage('Invalid or Expired Pass');
         setIsLoading(false);
         return;
       }
 
-      if (!data) {
-        setErrorMessage('This access link has expired or is invalid.');
-        setIsLoading(false);
-        return;
-      }
+      try {
+        const { data, error } = await supabase
+          .from('guest_passes')
+          .select('*')
+          .eq('pass_code', passCode);
 
-      setIsValid(true);
-      setIsLoading(false);
+        if (error) {
+          console.error('Watch: Supabase query failed:', error);
+          setErrorMessage('Invalid or Expired Pass');
+          return;
+        }
+
+        const passRecord = Array.isArray(data) && data.length > 0 ? data[0] : null;
+        if (!passRecord) {
+          setErrorMessage('Invalid or Expired Pass');
+          return;
+        }
+
+        const expiresAt = new Date(passRecord.expires_at);
+        if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
+          setErrorMessage('Invalid or Expired Pass');
+          return;
+        }
+
+        setPassData(passRecord);
+        setIsValid(true);
+      } catch (err) {
+        console.error('Watch: Unexpected error validating pass:', err);
+        setErrorMessage('Invalid or Expired Pass');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     validatePass();
-
-    return () => {
-      isActive = false;
-    };
-  }, [normalizedCode]);
-
-  useEffect(() => {
-    if (!isValid || !normalizedCode) {
-      return;
-    }
-
-    const channel = supabase
-      .channel(`watch-live-${normalizedCode}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'platform_connection_requests',
-        },
-        (payload) => {
-          if (!payload || !payload.new) return;
-          setEvents((current) => [payload.new, ...current]);
-        }
-      );
-
-    channel.subscribe((status) => {
-      console.log('[WATCH] realtime channel status', status);
-      if (status === 'SUBSCRIBED') {
-        console.log('[WATCH] subscribed to live platform connection requests');
-      }
-    });
-
-    channelRef.current = channel;
-
-    return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-      }
-    };
-  }, [isValid, normalizedCode]);
+  }, [location.search, params.code]);
 
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
       <div className="mx-auto max-w-5xl rounded-3xl border border-white/10 bg-slate-950/80 p-6 shadow-xl shadow-black/30">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold">Live Watch Portal</h1>
-          <p className="mt-2 text-slate-400">
-            This screen is read-only. It displays incoming live events for active guest pass access.
-          </p>
+          <p className="mt-2 text-slate-400">This screen is public and read-only.</p>
         </div>
 
         {isLoading && (
@@ -119,37 +84,24 @@ export default function Watch() {
 
         {!isLoading && errorMessage && (
           <div className="rounded-3xl border border-red-500/30 bg-red-950/80 p-6 text-red-200">
-            <p className="text-lg font-semibold">This access link has expired or is invalid.</p>
-            <p className="mt-2 text-sm text-red-200">Please request a new guest pass from the administrator.</p>
+            <p className="text-lg font-semibold">Invalid or Expired Pass</p>
+            <p className="mt-2 text-sm text-red-200">The pass is not valid or has already expired.</p>
           </div>
         )}
 
-        {!isLoading && isValid && (
+        {!isLoading && isValid && passData && (
           <div className="space-y-6">
             <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6">
-              <p className="text-slate-300">Guest pass <span className="font-semibold text-white">{normalizedCode}</span> is valid.</p>
-              <p className="mt-2 text-slate-400">Waiting for incoming live data from the platform connection request stream.</p>
+              <h2 className="text-2xl font-semibold">Access granted</h2>
+              <p className="mt-2 text-slate-300">This guest pass is valid until {new Date(passData.expires_at).toLocaleString()}.</p>
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6">
-              {events.length === 0 ? (
-                <div className="text-slate-400">No live events have arrived yet. Keep this page open to watch incoming data.</div>
-              ) : (
-                <div className="space-y-4">
-                  {events.map((event, index) => (
-                    <div key={`${event.id ?? index}-${event.created_at ?? index}`} className="rounded-3xl border border-white/10 bg-slate-950/90 p-4">
-                      <div className="flex flex-col gap-2 text-sm text-slate-300">
-                        {Object.entries(event).map(([field, value]) => (
-                          <div key={field} className="grid grid-cols-[180px_1fr] gap-3">
-                            <span className="font-mono text-slate-500">{field}</span>
-                            <span className="break-words text-white">{value === null || value === undefined ? '-' : String(value)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="text-slate-300">Live stream placeholder:</div>
+              <div className="mt-4 rounded-3xl bg-black/60 p-6 text-slate-100">
+                <p className="text-lg font-semibold">Live data stream</p>
+                <p className="mt-2 text-slate-400">Incoming events would appear here in the production watcher.</p>
+              </div>
             </div>
           </div>
         )}
