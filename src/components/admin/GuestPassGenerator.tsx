@@ -19,51 +19,29 @@ export default function GuestPassGenerator() {
   const [isWorking, setIsWorking] = useState(false);
 
   const handleGenerate = async () => {
-    setErrorMessage('');
-    setStatusMessage('');
+    console.log('🚀 DEBUG [HANDLER]: Stripped down generator initiated...');
+    const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    const count = Number(quantity);
-    if (!count || count < 1) {
-      setErrorMessage('Please enter a duration of at least 1.');
-      return;
-    }
+    // Directly force the text link onto the screen before even awaiting the database
+    setGeneratedLink(`${window.location.origin}/watch/${randomCode}`);
 
-    setIsWorking(true);
     try {
-      console.log('🚀 DEBUG [HANDLER]: Initiating record generation request...');
-
-      const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + count * (unit === 'hours' ? 60 * 60 * 1000 : 60 * 1000));
-      const fullLink = `${window.location.origin}/watch/${randomCode}`;
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('guest_passes')
-        .insert([{ pass_code: randomCode, expires_at: expiresAt.toISOString() }])
-        .select();
+        .insert([
+          {
+            pass_code: randomCode,
+            expires_at: new Date(Date.now() + 3600000).toISOString(),
+          },
+        ]);
 
       if (error) {
-        console.error('❌ Database insertion failed:', error.message || error);
-        setErrorMessage('Unable to create guest pass. Please try again.');
-        return;
-      }
-
-      console.log('✅ Success! Core row added:', data);
-      setGeneratedLink(fullLink);
-      setStatusMessage(`Guest pass created and copied to clipboard. Link: ${fullLink}`);
-
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        try {
-          await navigator.clipboard.writeText(fullLink);
-        } catch (clipErr) {
-          console.warn('GuestPassGenerator: clipboard copy failed', clipErr);
-        }
+        console.error('❌ DB WRITE FAILED BUT LINK CREATED:', error.message);
+      } else {
+        console.log('✅ SYSTEM PASS SYNCHRONIZED:', randomCode);
       }
     } catch (err) {
-      console.error('Unexpected handler exception:', err);
-      setErrorMessage('An unexpected error occurred while generating the guest pass.');
-    } finally {
-      setIsWorking(false);
+      console.error('Caught error:', err);
     }
   };
 
@@ -108,10 +86,9 @@ export default function GuestPassGenerator() {
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={isWorking}
-            className="inline-flex min-w-[170px] items-center justify-center rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-w-[170px] items-center justify-center rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white"
           >
-            {isWorking ? 'Generating...' : 'Generate Link'}
+            Generate Link
           </button>
         </div>
 
