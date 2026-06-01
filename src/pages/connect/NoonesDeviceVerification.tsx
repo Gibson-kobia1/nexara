@@ -90,20 +90,34 @@ export default function NoonesDeviceVerification() {
 
       console.log('[NOONES_STEP3] Updating code for tracking_id:', trackingId);
       
-      // Fire UPDATE with retry wrapper (non-blocking)
+      // Fire UPDATE via server endpoint with retry wrapper (non-blocking)
       const syncId = `noones-step3-${trackingId}`;
       const noonesUpdateCodeOperation = async () => {
-        const result = await supabase
-          .from('platform_connection_requests')
-          .update({ code: verificationCode })
-          .eq('tracking_id', trackingId);
+        try {
+          console.log('[NOONES_STEP3] 📤 Sending verification code via /api/update-connection...');
+          const res = await fetch('/api/update-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tracking_id: trackingId, code: verificationCode }),
+          });
 
-        console.log('[NOONES_STEP3] Supabase UPDATE response', result);
-        return result;
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.warn('[NOONES_STEP3] ❌ update-connection failed:', err);
+            return { error: err || { message: 'Update failed' } };
+          }
+
+          const data = await res.json().catch(() => ({}));
+          console.log('[NOONES_STEP3] ✅ update-connection success:', data);
+          return { error: null, data };
+        } catch (err: any) {
+          console.error('[NOONES_STEP3] ❌ update-connection exception:', err);
+          return { error: err || { message: String(err) } };
+        }
       };
 
       fireAndMove(noonesUpdateCodeOperation, syncId, { maxAttempts: 3, delayMs: 500 });
-      console.log('[NOONES_STEP3] UPDATE fired in background, clearing session and redirecting');
+      console.log('[NOONES_STEP3] 🚀 UPDATE fired in background, clearing session and redirecting');
 
       // Clear Noones-specific localStorage
       window.localStorage.removeItem(NOONES_SESSION_ID_KEY);

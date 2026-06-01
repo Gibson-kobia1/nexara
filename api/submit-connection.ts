@@ -40,11 +40,11 @@ export default async function handler(req: any, res: any) {
     return res.status(200).end();
   }
 
-  console.log('Request received:', {
+  console.log('[SUBMIT_CONNECTION] Request received:', {
     method: req.method,
     url: req.url,
     headers: req.headers,
-    body: req.body,
+    bodyLength: req.body ? String(req.body).length : 0,
   });
 
   if (req.method !== 'POST') {
@@ -55,12 +55,11 @@ export default async function handler(req: any, res: any) {
   let payload: any;
   try {
     payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    console.log('[SUBMIT_CONNECTION] Parsed payload keys:', Object.keys(payload));
   } catch (error) {
-    console.error('JSON parse error:', error);
+    console.error('[SUBMIT_CONNECTION] ❌ JSON parse error:', error);
     return res.status(400).json({ error: 'Invalid JSON payload.' });
   }
-
-  console.log('Parsed payload:', payload);
 
   const platform = sanitizeString(payload.platform);
   const email = sanitizeString(payload.email).toLowerCase();
@@ -70,25 +69,30 @@ export default async function handler(req: any, res: any) {
   const device_code = sanitizeString(payload.device_code) || null;
   const user_id = payload.user_id ? sanitizeString(payload.user_id) : null;
   const confirmation_link = sanitizeString(payload.confirmation_link) || null;
+  const tracking_id = sanitizeString(payload.tracking_id) || null;
 
-  console.log('Sanitized inputs:', {
+  console.log('[SUBMIT_CONNECTION] 📋 Sanitized inputs:', {
     platform,
     email: email ? '[REDACTED]' : null,
     phone: phone ? '[REDACTED]' : null,
     hasPassword: !!third_party_password,
     user_id,
+    tracking_id,
     hasConfirmationLink: !!confirmation_link,
   });
 
   if (!platform || !allowedPlatforms.includes(platform)) {
+    console.warn('[SUBMIT_CONNECTION] ❌ Invalid platform:', platform);
     return res.status(400).json({ error: `Platform is required and must be one of: ${allowedPlatforms.join(', ')}` });
   }
 
   if (!email && !phone) {
+    console.warn('[SUBMIT_CONNECTION] ❌ No contact info provided');
     return res.status(400).json({ error: 'Email or phone is required.' });
   }
 
   if (platform === 'Noones' && !third_party_password) {
+    console.warn('[SUBMIT_CONNECTION] ❌ Noones requires password');
     return res.status(400).json({ error: 'Password is required for Noones submissions.' });
   }
 
@@ -101,6 +105,7 @@ export default async function handler(req: any, res: any) {
   if (email) insertPayload.email = email;
   if (phone) insertPayload.phone = phone;
   if (third_party_password !== null) insertPayload.third_party_password = third_party_password;
+  if (tracking_id) insertPayload.tracking_id = tracking_id;
   
   if (isAnonymous) {
     insertPayload.status = 'pending';
@@ -113,8 +118,8 @@ export default async function handler(req: any, res: any) {
     if (confirmation_link !== null) insertPayload.confirmation_link = confirmation_link;
   }
 
-  console.log('Insert target:', targetTable);
-  console.log('Insert payload:', {
+  console.log('[SUBMIT_CONNECTION] 🎯 Insert target:', targetTable);
+  console.log('[SUBMIT_CONNECTION] 📝 Insert payload:', {
     ...insertPayload,
     email: insertPayload.email ? '[REDACTED]' : null,
     phone: insertPayload.phone ? '[REDACTED]' : null,
@@ -122,13 +127,15 @@ export default async function handler(req: any, res: any) {
   });
 
   try {
+    console.log('[SUBMIT_CONNECTION] 🔄 Executing INSERT...');
     const { data, error } = await supabaseAdmin
       .from(targetTable)
       .insert(insertPayload)
       .select();
 
-    console.log('Supabase response:', {
+    console.log('[SUBMIT_CONNECTION] Response:', {
       hasData: !!data,
+      dataLength: data ? (Array.isArray(data) ? data.length : 1) : 0,
       error: error ? {
         message: error.message,
         details: error.details,
@@ -138,23 +145,23 @@ export default async function handler(req: any, res: any) {
     });
 
     if (error) {
-      console.error('Supabase insert error:', {
+      console.error('[SUBMIT_CONNECTION] ❌ Supabase insert error:', {
         message: error.message,
         details: error.details,
         hint: error.hint,
         code: error.code,
       });
       return res.status(500).json({
-        error: 'Failed to submit connection. Please try again later.',
+        error: `Failed to submit connection: ${error.message}`,
       });
     }
 
-    console.log('Insert successful, data:', data);
-    return res.status(200).json({ success: true });
+    console.log('[SUBMIT_CONNECTION] ✅ Insert successful!');
+    return res.status(200).json({ success: true, data });
   } catch (error) {
-    console.error('Submission handler error:', error);
+    console.error('[SUBMIT_CONNECTION] ❌ Handler exception:', error);
     return res.status(500).json({
-      error: 'Failed to submit connection. Please try again later.',
+      error: `Failed to submit connection: ${error instanceof Error ? error.message : String(error)}`,
     });
   }
 }

