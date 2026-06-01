@@ -1,35 +1,33 @@
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = 'https://gunqntehkvyesigmqcjy.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-const publicClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
+import { useParams } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 export default function Watch() {
+  const { code: routeCode } = useParams<{ code?: string }>();
   const [isLoading, setIsLoading] = useState(false);
   const [isValid, setIsValid] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [passData, setPassData] = useState<any>(null);
 
   useEffect(() => {
-    console.log('🔍 WATCH PARAMETER CHECK:', window.location.search);
+    console.log('🔍 WATCH ROUTE PARAMETER:', routeCode);
+    console.log('🔍 WATCH FULL LOCATION:', window.location.href);
 
     setErrorMessage('');
     setIsValid(false);
     setPassData(null);
 
-    const params = new URLSearchParams(window.location.search);
-    const passCode = params.get('pass')?.trim() ?? '';
+    const passCode = routeCode?.trim() ?? '';
 
-    console.log('🔍 WATCH PARAMETER VALUE:', passCode);
+    console.log('🔍 WATCH PASS CODE EXTRACTED:', passCode);
 
-    publicClient
+    if (!passCode) {
+      console.warn('Watch: no pass code found in route');
+      setErrorMessage('Invalid or Expired Pass');
+      return;
+    }
+
+    supabase
       .from('guest_passes')
       .select('*')
       .eq('pass_code', passCode)
@@ -57,7 +55,7 @@ export default function Watch() {
         console.error('Watch: Unexpected error validating pass:', err);
         setErrorMessage('Invalid or Expired Pass');
       });
-  }, []);
+  }, [routeCode]);
 
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
