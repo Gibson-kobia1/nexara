@@ -19,7 +19,7 @@ export default function Watch() {
     console.log('🔍 WATCH PARAMETER CHECK:', window.location.search);
     console.log('🔍 WATCH PARAMETER VALUE:', passCode);
 
-    const validatePass = async () => {
+    (async () => {
       setErrorMessage('');
       setIsValid(false);
       setPassData(null);
@@ -62,9 +62,7 @@ export default function Watch() {
         console.error('Watch: Unexpected error validating pass:', err);
         setErrorMessage('Invalid or Expired Pass');
       }
-    };
-
-    validatePass();
+    })();
   }, [location.search, params.code]);
 
   return (
