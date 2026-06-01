@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://gunqntehkvyesigmqcjy.supabase.co';
-const supabaseAnonKey = 'REPLACE_WITH_EXACT_ANON_KEY_FROM_SRC_LIB_SUPABASE';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 const publicClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
