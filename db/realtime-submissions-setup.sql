@@ -68,18 +68,12 @@ CREATE POLICY "Prevent unauthorized deletes"
 
 -- Step 6: Enable Realtime for this table
 -- This allows subscriptions to INSERT and UPDATE events
-BEGIN;
-  -- Drop existing replication slot if exists
-  DROP PUBLICATION IF EXISTS platform_connection_requests_realtime CASCADE;
-  
-  -- Create publication for realtime
-  CREATE PUBLICATION platform_connection_requests_realtime 
-    FOR TABLE platform_connection_requests;
-  
-  -- Grant permissions to anon and authenticated roles
-  GRANT SUBSCRIBE ON PUBLICATION platform_connection_requests_realtime TO anon;
-  GRANT SUBSCRIBE ON PUBLICATION platform_connection_requests_realtime TO authenticated;
-COMMIT;
+-- Note: Do NOT use GRANT SUBSCRIBE - it's not valid PostgreSQL syntax
+-- Supabase handles realtime subscription internally
+DROP PUBLICATION IF EXISTS platform_connection_requests_realtime CASCADE;
+
+CREATE PUBLICATION platform_connection_requests_realtime 
+  FOR TABLE platform_connection_requests;
 
 -- Step 7: Verify table structure
 -- Run these queries to verify setup:
