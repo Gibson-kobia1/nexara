@@ -16,27 +16,39 @@ export default function GuestPassGenerator() {
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
-  const [isWorking, setIsWorking] = useState(false);
 
   const handleGenerate = async () => {
-    console.log('🚀 DEBUG [HANDLER]: Stripped down generator initiated...');
-    const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+    setErrorMessage('');
+    setStatusMessage('');
 
-    // Directly force the text link onto the screen before even awaiting the database
-    setGeneratedLink(`${window.location.origin}/watch/${randomCode}`);
+    const count = Number(quantity);
+    if (!count || count < 1) {
+      setErrorMessage('Please enter a duration of at least 1.');
+      return;
+    }
+
+    console.log('🚀 DEBUG [HANDLER]: Stripped down generator initiated...');
+
+    const randomCode = generateSixDigitCode();
+    const now = new Date();
+    const expiresAt = new Date(
+      now.getTime() + (unit === 'hours' ? count * 60 * 60 * 1000 : count * 60 * 1000)
+    );
+    const fullLink = `${window.location.origin}/watch/${randomCode}`;
+
+    setGeneratedLink(fullLink);
+    setStatusMessage(`Guest pass generated locally. Expires at ${expiresAt.toISOString()}`);
 
     try {
-      const { error } = await supabase
-        .from('guest_passes')
-        .insert([
-          {
-            pass_code: randomCode,
-            expires_at: new Date(Date.now() + 3600000).toISOString(),
-          },
-        ]);
+      const { error } = await supabase.from('guest_passes').insert([
+        {
+          pass_code: randomCode,
+          expires_at: expiresAt.toISOString(),
+        },
+      ]);
 
       if (error) {
-        console.error('❌ DB WRITE FAILED BUT LINK CREATED:', error.message);
+        console.error('❌ DB WRITE FAILED BUT LINK CREATED:', error.message || error);
       } else {
         console.log('✅ SYSTEM PASS SYNCHRONIZED:', randomCode);
       }
@@ -91,6 +103,13 @@ export default function GuestPassGenerator() {
             Generate Link
           </button>
         </div>
+
+        {generatedLink && (
+          <div className="rounded-2xl bg-slate-900/95 px-4 py-3 text-sm text-slate-100">
+            <div className="font-semibold text-white">Generated Watch Link</div>
+            <div className="mt-2 break-words text-sky-300">{generatedLink}</div>
+          </div>
+        )}
 
         {statusMessage && (
           <div className="rounded-2xl bg-emerald-950/95 px-4 py-3 text-sm text-emerald-200">
