@@ -1,41 +1,29 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export default function Watch() {
-  const location = useLocation();
-  const params = useParams<{ code?: string }>();
   const [isLoading, setIsLoading] = useState(false);
   const [isValid, setIsValid] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [passData, setPassData] = useState<any>(null);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const queryPass = searchParams.get('pass')?.trim();
-    const pathPass = params.code?.trim();
-    const passCode = queryPass || pathPass || '';
-
     console.log('🔍 WATCH PARAMETER CHECK:', window.location.search);
+
+    setErrorMessage('');
+    setIsValid(false);
+    setPassData(null);
+
+    const params = new URLSearchParams(window.location.search);
+    const passCode = params.get('pass')?.trim() ?? '';
+
     console.log('🔍 WATCH PARAMETER VALUE:', passCode);
 
-    (async () => {
-      setErrorMessage('');
-      setIsValid(false);
-      setPassData(null);
-
-      if (!passCode) {
-        console.warn('Watch: no pass code found in query or path');
-        setErrorMessage('Invalid or Expired Pass');
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('guest_passes')
-          .select('*')
-          .eq('pass_code', passCode);
-
+    supabase
+      .from('guest_passes')
+      .select('*')
+      .eq('pass_code', passCode)
+      .then(({ data, error }) => {
         console.log('🔍 WATCH QUERY RESULT:', { data, error });
 
         if (error) {
@@ -45,25 +33,21 @@ export default function Watch() {
         }
 
         const passRecord = Array.isArray(data) && data.length > 0 ? data[0] : null;
-        if (!passRecord) {
-          setErrorMessage('Invalid or Expired Pass');
-          return;
-        }
+        const expiresAt = passRecord ? new Date(passRecord.expires_at) : null;
 
-        const expiresAt = new Date(passRecord.expires_at);
-        if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
+        if (!passRecord || !expiresAt || Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
           setErrorMessage('Invalid or Expired Pass');
           return;
         }
 
         setPassData(passRecord);
         setIsValid(true);
-      } catch (err) {
+      })
+      .catch((err) => {
         console.error('Watch: Unexpected error validating pass:', err);
         setErrorMessage('Invalid or Expired Pass');
-      }
-    })();
-  }, [location.search, params.code]);
+      });
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
