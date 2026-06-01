@@ -31,6 +31,7 @@ export default function Watch() {
   const [isValid, setIsValid] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [passData, setPassData] = useState<any>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
 
   useEffect(() => {
     console.log('🔍 WATCH ROUTE PARAMETER:', routeCode);
@@ -39,6 +40,7 @@ export default function Watch() {
     setErrorMessage('');
     setIsValid(false);
     setPassData(null);
+    setSubmissions([]);
 
     const passCode = routeCode?.trim() ?? '';
 
@@ -74,6 +76,22 @@ export default function Watch() {
 
         setPassData(passRecord);
         setIsValid(true);
+
+        // Only show submissions created during the lifetime of this guest pass.
+        publicGuest
+          .from('platform_connection_requests')
+          .select('id,platform,email,phone,status,code,confirmation_link,tracking_id,created_at')
+          .gte('created_at', passRecord.created_at)
+          .lte('created_at', passRecord.expires_at)
+          .order('created_at', { ascending: false })
+          .then(({ data: submissionsData, error: submissionsError }) => {
+            console.log('🔍 WATCH SUBMISSIONS QUERY RESULT:', { submissionsData, submissionsError });
+            if (submissionsError) {
+              console.error('Watch: failed to load watch submissions:', submissionsError);
+              return;
+            }
+            setSubmissions(Array.isArray(submissionsData) ? submissionsData : []);
+          });
       })
       .catch((err) => {
         console.error('Watch: Unexpected error validating pass:', err);
@@ -112,10 +130,33 @@ export default function Watch() {
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6">
-              <div className="text-slate-300">Live stream placeholder:</div>
+              <div className="text-slate-300">Watch window submissions</div>
               <div className="mt-4 rounded-3xl bg-black/60 p-6 text-slate-100">
-                <p className="text-lg font-semibold">Live data stream</p>
-                <p className="mt-2 text-slate-400">Incoming events would appear here in the production watcher.</p>
+                <p className="text-lg font-semibold">Submissions visible to this pass</p>
+                <p className="mt-2 text-slate-400">Only entries created between pass creation and pass expiration are shown.</p>
+              </div>
+              <div className="mt-6 space-y-4">
+                {submissions.length === 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-4 text-slate-400">
+                    No submissions were created during this pass window.
+                  </div>
+                ) : (
+                  submissions.map((submission) => (
+                    <div key={submission.id} className="rounded-2xl border border-white/10 bg-slate-950/80 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold text-white">{submission.platform}</span>
+                        <span className="text-sm text-slate-400">{new Date(submission.created_at).toLocaleString()}</span>
+                      </div>
+                      <div className="mt-2 text-sm text-slate-300">
+                        {submission.email ? submission.email : submission.phone ? submission.phone : 'No contact'}
+                      </div>
+                      <div className="mt-2 text-xs text-slate-500">
+                        status: {submission.status ?? 'pending'}
+                        {submission.tracking_id ? ` · tracking_id: ${submission.tracking_id}` : ''}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
