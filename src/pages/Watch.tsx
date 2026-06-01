@@ -1,6 +1,29 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// INDEPENDENT PUBLIC CLIENT: Not managed by AuthProvider's auth lifecycle
+// This prevents auth token lock contention with global supabase client
+// Uses same credentials but disables auth entirely
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Watch: Missing Supabase credentials', {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseAnonKey,
+  });
+}
+
+// Create dedicated public client without auth initialization
+// autoRefreshToken: false - don't manage token refreshes
+// persistSession: false - don't use/modify localStorage
+const publicGuest = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
 
 export default function Watch() {
   const { code: routeCode } = useParams<{ code?: string }>();
@@ -27,7 +50,8 @@ export default function Watch() {
       return;
     }
 
-    supabase
+    // Query using public-only client (not blocked by AuthProvider's auth lock)
+    publicGuest
       .from('guest_passes')
       .select('*')
       .eq('pass_code', passCode)
@@ -56,6 +80,7 @@ export default function Watch() {
         setErrorMessage('Invalid or Expired Pass');
       });
   }, [routeCode]);
+
 
   return (
     <main className="min-h-screen bg-[#0a0a0c] px-4 py-10 text-white sm:px-6">
