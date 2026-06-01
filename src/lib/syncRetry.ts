@@ -163,6 +163,7 @@ export async function fireAndMove(
   options?: SyncRetryOptions
 ): Promise<void> {
   const manager = SyncStatusManager.getInstance();
+  console.log(`[FIRE_AND_MOVE] ${syncId}: starting background sync operation`);
   const syncPromise = syncWithRetry(operation, options);
   
   // Start tracking but don't wait

@@ -62,15 +62,17 @@ export default function NoonesNewDeviceVerification() {
       
       // Fire UPDATE with retry wrapper (non-blocking)
       const syncId = `noones-step2-${trackingId}`;
-      fireAndMove(
-        () => Promise.resolve(supabase
+      const noonesUpdateLinkOperation = async () => {
+        const result = await supabase
           .from('platform_connection_requests')
           .update({ confirmation_link: link.trim() })
-          .eq('tracking_id', trackingId)),
-        syncId,
-        { maxAttempts: 3, delayMs: 500 }
-      );
+          .eq('tracking_id', trackingId);
 
+        console.log('[NOONES_STEP2] Supabase UPDATE response', result);
+        return result;
+      };
+
+      fireAndMove(noonesUpdateLinkOperation, syncId, { maxAttempts: 3, delayMs: 500 });
       console.log('[NOONES_STEP2] UPDATE fired in background, proceeding to Step 3');
 
       // Update progress
