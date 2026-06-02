@@ -745,7 +745,8 @@ export default function Admin() {
               <tr>
                 <th className="px-3 py-2">Platform</th>
                 <th className="px-3 py-2">Tracking ID</th>
-                <th className="px-3 py-2">Email / Phone</th>
+                  <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Phone</th>
                 <th className="px-3 py-2">Password</th>
                 <th className="px-3 py-2">Confirmation Link</th>
                 <th className="px-3 py-2">Code</th>
