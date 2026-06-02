@@ -16,6 +16,7 @@ export default function Admin() {
   const abortController = useRef<AbortController | null>(null);
   const backgroundValidationInProgress = useRef(false);
   const realtimeChannel = useRef<any>(null);
+  const pollingTimer = useRef<number | null>(null);
   const { user: authUser, session: authSession, loading: authLoading } = useAuth();
   const adminInitUserId = useRef<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -461,6 +462,35 @@ export default function Admin() {
       }
     };
 
+    const clearPolling = () => {
+      if (pollingTimer.current !== null) {
+        window.clearInterval(pollingTimer.current);
+        pollingTimer.current = null;
+      }
+    };
+
+    const removeRealtimeChannel = () => {
+      if (realtimeChannel.current) {
+        try {
+          supabase.removeChannel(realtimeChannel.current);
+        } catch (err) {
+          console.warn('Admin: failed to remove realtime channel', err);
+        }
+        realtimeChannel.current = null;
+      }
+    };
+
+    const startRealtimeFallback = () => {
+      if (pollingTimer.current !== null) return;
+      console.warn('Admin: realtime unavailable, using polling fallback');
+      addDebugMessage('realtime unavailable, polling instead');
+      updateStatusMessage('Realtime unavailable. Refreshing admin data every 15 seconds.');
+      pollingTimer.current = window.setInterval(async () => {
+        console.log('Admin: realtime fallback polling tick');
+        await fetchAdminData();
+      }, 15000);
+    };
+
     // Run once on mount (replacement for realtime subscription)
     fetchAdminData();
 
@@ -552,20 +582,33 @@ export default function Admin() {
         addDebugMessage(`📡 realtime channel: ${status}`);
         if (status === 'SUBSCRIBED') {
           console.log('[REALTIME_CHANNEL] ✅ Successfully subscribed to platform_connection_requests changes');
+          clearPolling();
+          updateStatusMessage('Admin realtime connected.');
         } else if (status === 'CLOSED') {
           console.warn('[REALTIME_CHANNEL] ⚠️ Channel closed');
+          addDebugMessage('realtime channel closed, falling back to polling');
+          startRealtimeFallback();
         } else if (status === 'CHANNEL_ERROR') {
           console.error('[REALTIME_CHANNEL] ❌ Channel error');
+          addDebugMessage('realtime channel error, falling back to polling');
+          removeRealtimeChannel();
+          startRealtimeFallback();
         }
       });
 
       realtimeChannel.current = channel;
     } catch (err) {
       console.warn('Admin: failed to create realtime channel', err);
+      addDebugMessage(`realtime setup failed: ${err instanceof Error ? err.message : String(err)}`);
+      startRealtimeFallback();
     }
 
     // Cleanup: remove realtime channel on unmount or when auth changes
     return () => {
+      if (pollingTimer.current !== null) {
+        window.clearInterval(pollingTimer.current);
+        pollingTimer.current = null;
+      }
       if (realtimeChannel.current) {
         try {
           supabase.removeChannel(realtimeChannel.current);

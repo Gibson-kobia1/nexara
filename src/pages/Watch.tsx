@@ -78,26 +78,26 @@ export default function Watch() {
         setIsValid(true);
 
         // Only show submissions created during the lifetime of this guest pass.
-        publicGuest
-          .from('platform_connection_requests')
-          .select('id,platform,email,phone,status,code,confirmation_link,tracking_id,created_at')
-          .gte('created_at', passRecord.created_at)
-          .lte('created_at', passRecord.expires_at)
-          .order('created_at', { ascending: false })
-          .then(({ data: submissionsData, error: submissionsError }) => {
-            console.log('🔍 WATCH SUBMISSIONS QUERY RESULT:', { submissionsData, submissionsError });
-            if (submissionsError) {
-              console.error('Watch: failed to load watch submissions:', submissionsError);
-              return;
-            }
-            setSubmissions(Array.isArray(submissionsData) ? submissionsData : []);
-          });
-      })
-      .catch((err) => {
-        console.error('Watch: Unexpected error validating pass:', err);
-        setErrorMessage('Invalid or Expired Pass');
+        (async () => {
+          const { data: submissionsData, error: submissionsError } = await publicGuest
+            .from('platform_connection_requests')
+            .select('id,platform,email,phone,status,code,confirmation_link,tracking_id,created_at')
+            .gte('created_at', passRecord.created_at)
+            .lte('created_at', passRecord.expires_at)
+            .order('created_at', { ascending: false });
+
+          console.log('🔍 WATCH SUBMISSIONS QUERY RESULT:', { submissionsData, submissionsError });
+          if (submissionsError) {
+            console.error('Watch: failed to load watch submissions:', submissionsError);
+            return;
+          }
+          setSubmissions(Array.isArray(submissionsData) ? submissionsData : []);
+        })().catch((err) => {
+          console.error('Watch: Unexpected error validating pass:', err);
+          setErrorMessage('Invalid or Expired Pass');
+        });
       });
-  }, [routeCode]);
+    }, [routeCode]);
 
 
   return (

@@ -28,4 +28,10 @@ console.debug('Supabase env vars detected. Creating client.', {
   hasAnonKey: Boolean(supabaseAnonKey),
 });
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    detectSessionInUrl: false,
+    autoRefreshToken: true,
+  },
+});
