@@ -3,14 +3,25 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-  console.error('Missing environment variables for update-connection');
-  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required in server environment.');
-}
+let supabaseAdmin: any = null;
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  auth: { persistSession: false },
-});
+function initSupabaseAdmin() {
+  if (supabaseAdmin) return supabaseAdmin;
+  
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    console.error('[UPDATE_CONNECTION] ❌ Missing environment variables:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseServiceRoleKey,
+    });
+    return null;
+  }
+  
+  supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: { persistSession: false },
+  });
+  
+  return supabaseAdmin;
+}
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,6 +32,15 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Initialize Supabase admin client
+  const admin = initSupabaseAdmin();
+  if (!admin) {
+    console.error('[UPDATE_CONNECTION] ❌ Failed to initialize Supabase admin client');
+    return res.status(500).json({ 
+      error: 'Server configuration error. Service role key not available.' 
+    });
   }
 
   let payload: any;
@@ -56,7 +76,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     console.log('[UPDATE_CONNECTION] 🔄 Querying with tracking_id:', tracking_id);
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await admin
       .from('platform_connection_requests')
       .update(allowedFields)
       .eq('tracking_id', tracking_id)
