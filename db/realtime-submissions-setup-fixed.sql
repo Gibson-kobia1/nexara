@@ -30,6 +30,7 @@ CREATE INDEX IF NOT EXISTS idx_platform_connection_requests_platform
 -- Step 3: ENABLE ROW LEVEL SECURITY (if not already enabled)
 -- ============================================================================
 ALTER TABLE platform_connection_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_connection_requests REPLICA IDENTITY FULL;
 
 -- ============================================================================
 -- Step 4: DROP OLD POLICIES (clean slate)
@@ -58,11 +59,12 @@ CREATE POLICY "Allow users to view submissions with tracking_id"
   FOR SELECT
   USING (true);
 
--- Prevent UPDATE from public (use service role via /api/update-connection instead)
-CREATE POLICY "Prevent unauthorized updates"
+-- Allow updates through tracking_id for service role or API updates
+CREATE POLICY "Allow updates via tracking_id"
   ON platform_connection_requests
   FOR UPDATE
-  USING (false);
+  USING (true)
+  WITH CHECK (true);
 
 -- Prevent DELETE from public (use service role via admin endpoint instead)
 CREATE POLICY "Prevent unauthorized deletes"

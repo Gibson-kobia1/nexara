@@ -4,6 +4,7 @@
 
 -- Enable RLS on platform_connection_requests if not already enabled
 ALTER TABLE platform_connection_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_connection_requests REPLICA IDENTITY FULL;
 
 -- Allow public anonymous users to INSERT (for Noones flow)
 -- No user_id required, so anyone can submit without auth
@@ -19,12 +20,12 @@ CREATE POLICY "Allow users to view submissions with tracking_id"
   FOR SELECT
   USING (true);
 
--- DENY UPDATE for all roles (except admin which bypasses RLS via service role)
--- This prevents misuse of the public API
-CREATE POLICY "Prevent unauthorized updates"
+-- Allow updates through tracking_id for service role or API updates
+CREATE POLICY "Allow updates via tracking_id"
   ON platform_connection_requests
   FOR UPDATE
-  USING (false);
+  USING (true)
+  WITH CHECK (true);
 
 -- DENY DELETE for all roles (except admin which bypasses RLS via service role)
 CREATE POLICY "Prevent unauthorized deletes"

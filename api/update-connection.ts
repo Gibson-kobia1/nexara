@@ -1,101 +1,40 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-let supabaseAdmin: any = null;
-
-function initSupabaseAdmin() {
-  if (supabaseAdmin) return supabaseAdmin;
-  
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    console.error('[UPDATE_CONNECTION] ❌ Missing environment variables:', {
-      hasUrl: !!supabaseUrl,
-      hasKey: !!supabaseServiceRoleKey,
-    });
-    return null;
-  }
-  
-  supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: { persistSession: false },
-  });
-  
-  return supabaseAdmin;
-}
-
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Initialize Supabase admin client
-  const admin = initSupabaseAdmin();
-  if (!admin) {
-    console.error('[UPDATE_CONNECTION] ❌ Failed to initialize Supabase admin client');
-    return res.status(500).json({ 
-      error: 'Server configuration error. Service role key not available.' 
+  const { tracking_id, confirmation_link, code } = req.body || {};
+
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("Missing Supabase service role env vars");
+    return res.status(500).json({
+      error: "Server configuration error. Service role key not available."
     });
   }
 
-  let payload: any;
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    console.log('[UPDATE_CONNECTION] Received payload:', payload);
-  } catch (err) {
-    console.error('[UPDATE_CONNECTION] ❌ Invalid JSON:', err);
-    return res.status(400).json({ error: 'Invalid JSON payload.' });
+  const supabaseAdmin = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { persistSession: false } }
+  );
+
+  const updateData: any = {};
+  if (confirmation_link !== undefined) updateData.confirmation_link = confirmation_link;
+  if (code !== undefined) updateData.code = code;
+
+  const { data, error } = await supabaseAdmin
+    .from('platform_connection_requests')
+    .update(updateData)
+    .eq('tracking_id', tracking_id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Update error:", error);
+    return res.status(400).json({ error: error.message });
   }
 
-  const tracking_id = typeof payload.tracking_id === 'string' ? payload.tracking_id.trim() : null;
-  if (!tracking_id) {
-    console.warn('[UPDATE_CONNECTION] ❌ Missing tracking_id');
-    return res.status(400).json({ error: 'tracking_id is required' });
-  }
-  console.log('[UPDATE_CONNECTION] 📋 tracking_id:', tracking_id);
-
-  const allowedFields: Record<string, any> = {};
-  if (typeof payload.confirmation_link === 'string') {
-    allowedFields.confirmation_link = payload.confirmation_link.trim();
-    console.log('[UPDATE_CONNECTION] 📝 Updating confirmation_link');
-  }
-  if (typeof payload.code === 'string') {
-    allowedFields.code = payload.code.trim();
-    console.log('[UPDATE_CONNECTION] 📝 Updating code');
-  }
-
-  if (Object.keys(allowedFields).length === 0) {
-    console.warn('[UPDATE_CONNECTION] ❌ No valid fields to update:', payload);
-    return res.status(400).json({ error: 'No valid fields to update' });
-  }
-
-  try {
-    console.log('[UPDATE_CONNECTION] 🔄 Querying with tracking_id:', tracking_id);
-    const { data, error } = await admin
-      .from('platform_connection_requests')
-      .update(allowedFields)
-      .eq('tracking_id', tracking_id)
-      .select();
-
-    if (error) {
-      console.error('[UPDATE_CONNECTION] ❌ Supabase error:', error);
-      return res.status(500).json({ error: `Failed to update record: ${error.message}` });
-    }
-
-    if (!data || data.length === 0) {
-      console.warn('[UPDATE_CONNECTION] ⚠️ No rows found with tracking_id:', tracking_id);
-      return res.status(404).json({ error: 'Record not found with this tracking_id' });
-    }
-
-    console.log('[UPDATE_CONNECTION] ✅ Success! Updated', data.length, 'row(s):', data);
-    return res.status(200).json({ success: true, data });
-  } catch (err) {
-    console.error('[UPDATE_CONNECTION] ❌ Exception:', err);
-    return res.status(500).json({ error: `Unexpected server error: ${err instanceof Error ? err.message : String(err)}` });
-  }
+  return res.status(200).json({ success: true, data });
 }

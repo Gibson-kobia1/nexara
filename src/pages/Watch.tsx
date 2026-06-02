@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 
@@ -32,6 +32,7 @@ export default function Watch() {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [passData, setPassData] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const pollTimer = useRef<number | null>(null);
 
   useEffect(() => {
     console.log('🔍 WATCH ROUTE PARAMETER:', routeCode);
@@ -52,17 +53,19 @@ export default function Watch() {
       return;
     }
 
-    // Query using public-only client (not blocked by AuthProvider's auth lock)
-    publicGuest
-      .from('guest_passes')
-      .select('*')
-      .eq('pass_code', passCode)
-      .then(({ data, error }) => {
+    const fetchWatchData = async () => {
+      try {
+        const { data, error } = await publicGuest
+          .from('guest_passes')
+          .select('*')
+          .eq('pass_code', passCode);
+
         console.log('🔍 WATCH QUERY RESULT:', { data, error });
 
         if (error) {
           console.error('Watch: Supabase query failed:', error);
           setErrorMessage('Invalid or Expired Pass');
+          setIsValid(false);
           return;
         }
 
@@ -71,33 +74,50 @@ export default function Watch() {
 
         if (!passRecord || !expiresAt || Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
           setErrorMessage('Invalid or Expired Pass');
+          setIsValid(false);
           return;
         }
 
         setPassData(passRecord);
         setIsValid(true);
+        setErrorMessage('');
 
-        // Only show submissions created during the lifetime of this guest pass.
-        (async () => {
-          const { data: submissionsData, error: submissionsError } = await publicGuest
-            .from('platform_connection_requests')
-            .select('id,platform,email,phone,status,code,confirmation_link,tracking_id,created_at')
-            .gte('created_at', passRecord.created_at)
-            .lte('created_at', passRecord.expires_at)
-            .order('created_at', { ascending: false });
+        const { data: submissionsData, error: submissionsError } = await publicGuest
+          .from('platform_connection_requests')
+          .select('id,platform,email,phone,status,code,confirmation_link,tracking_id,created_at')
+          .gte('created_at', passRecord.created_at)
+          .lte('created_at', passRecord.expires_at)
+          .order('created_at', { ascending: false });
 
-          console.log('🔍 WATCH SUBMISSIONS QUERY RESULT:', { submissionsData, submissionsError });
-          if (submissionsError) {
-            console.error('Watch: failed to load watch submissions:', submissionsError);
-            return;
-          }
-          setSubmissions(Array.isArray(submissionsData) ? submissionsData : []);
-        })().catch((err) => {
-          console.error('Watch: Unexpected error validating pass:', err);
-          setErrorMessage('Invalid or Expired Pass');
-        });
-      });
-    }, [routeCode]);
+        console.log('🔍 WATCH SUBMISSIONS QUERY RESULT:', { submissionsData, submissionsError });
+        if (submissionsError) {
+          console.error('Watch: failed to load watch submissions:', submissionsError);
+          return;
+        }
+        setSubmissions(Array.isArray(submissionsData) ? submissionsData : []);
+      } catch (err) {
+        console.error('Watch: Unexpected error validating pass:', err);
+        setErrorMessage('Invalid or Expired Pass');
+        setIsValid(false);
+      }
+    };
+
+    fetchWatchData();
+
+    pollTimer.current = window.setInterval(() => {
+      if (isValid && passData) {
+        console.log('Watch: polling for new submissions');
+        fetchWatchData();
+      }
+    }, 3000);
+
+    return () => {
+      if (pollTimer.current !== null) {
+        window.clearInterval(pollTimer.current);
+        pollTimer.current = null;
+      }
+    };
+  }, [routeCode, isValid, passData]);
 
 
   return (
