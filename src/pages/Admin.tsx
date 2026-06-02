@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import Connect from './Connect';
 import GuestPassGenerator from '../components/admin/GuestPassGenerator';
-import { useAuth } from '../contexts/AuthContext';
 
 const ADMIN_CACHE_KEY = 'nexara_admin_status';
+const ADMIN_USERNAME = 'venomous';
+const ADMIN_PASSWORD = 'venomous99';
 const REQUESTS_CACHE_KEY = 'nexara_cached_platform_requests';
 const USERS_CACHE_KEY = 'nexara_cached_users';
 
@@ -14,16 +14,16 @@ export default function Admin() {
   const isMounted = useRef(true);
   const currentInitId = useRef(0);
   const abortController = useRef<AbortController | null>(null);
-  const backgroundValidationInProgress = useRef(false);
   const realtimeChannel = useRef<any>(null);
   const pollingTimer = useRef<number | null>(null);
-  const { user: authUser, session: authSession, loading: authLoading } = useAuth();
-  const adminInitUserId = useRef<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [activeGuestPasses, setActiveGuestPasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
   const [adminState, setAdminState] = useState<'loading-session' | 'verifying-admin' | 'ready'>('loading-session');
   const [unauthorizedMessage, setUnauthorizedMessage] = useState('');
@@ -179,115 +179,65 @@ export default function Admin() {
     setStatusMessage(message);
   };
 
-  const initializeAdmin = async (user: any) => {
+  const handleAdminLogin = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoginError('');
+    setUnauthorizedMessage('');
+
+    if (loginUsername.trim() !== ADMIN_USERNAME || loginPassword !== ADMIN_PASSWORD) {
+      setLoginError('Invalid username or password.');
+      return;
+    }
+
+    saveAdminStatusToCache();
+    setIsAdmin(true);
+    setAuthChecked(true);
+    setAdminState('ready');
+    setLoading(true);
+    updateStatusMessage('Admin access granted. Loading dashboard...');
+    initializeAdmin();
+  };
+
+  const initializeAdmin = async () => {
     const initId = ++currentInitId.current;
-    console.log('Admin: initializeAdmin called with user:', user ? { id: user.id, email: user.email } : null, 'initId:', initId);
+    console.log('Admin: initializeAdmin called, initId:', initId);
     if (!isMounted.current) {
       console.log('Admin: component unmounted, skipping');
       return;
     }
 
-    // Abort previous admin check
     if (abortController.current) {
       abortController.current.abort();
     }
     abortController.current = new AbortController();
 
-    if (!user) {
-      console.log('Admin: no user, setting not admin');
-      updateStatusMessage('No active admin session found. Please sign in.');
-      setIsAdmin(false);
-      finishAuthCheck();
-      return;
-    }
-
-    // Check cache first for instant hydration
     const cachedAdmin = getCachedAdminStatus();
-    if (cachedAdmin) {
-      console.log('Admin: cache hit - instant hydration');
-      addDebugMessage('cache hit - instant hydration');
-      loadCachedData();
-      setIsAdmin(true);
-      setAuthChecked(true);
-      setAdminState('ready');
-      setLoading(true);
-      updateStatusMessage('Loaded cached data. Refreshing from server...');
-
-      // Always refresh from the server when a session is restored,
-      // even if cached values exist on this device.
-      await backgroundValidateAdmin(user, initId);
+    if (!cachedAdmin) {
+      console.log('Admin: no cached admin session found');
+      setIsAdmin(false);
+      finishAuthCheck('No active admin session. Please sign in.');
       return;
     }
 
-    // No cache: perform normal initialization
-    console.log('Admin: no cache - performing full check');
+    console.log('Admin: cache hit - instant hydration');
+    addDebugMessage('cache hit - instant hydration');
+    loadCachedData();
+    setIsAdmin(true);
+    setAuthChecked(true);
+    setAdminState('ready');
     setLoading(true);
-    setAuthChecked(false);
-    setAdminState('verifying-admin');
-    updateStatusMessage('Verifying admin access...');
-    addDebugMessage('admin check started (no cache)');
+    updateStatusMessage('Loaded cached data. Refreshing from server...');
+    saveAdminStatusToCache();
 
     try {
-      if (!user.id) {
-        console.log('Admin: user missing id, cannot proceed');
-        addDebugMessage('check-failed: user missing id');
-        updateStatusMessage('Invalid user session. Please refresh and try again.');
-        setIsAdmin(false);
-        finishAuthCheck('Invalid user session.');
-        return;
-      }
-
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Admin: profile query error:', error);
-        throw error;
-      }
-
-      console.log('Admin: profile query result:', profile);
-      addDebugMessage('profile query completed');
-      const normalizedEmail = user.email?.toLowerCase?.() ?? '';
-      const adminOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
-      const isOwner = adminOwnerEmails.includes(normalizedEmail);
-      console.log('Admin: isOwner check:', isOwner, 'user email:', user.email);
-
-      if (!profile?.is_admin && !isOwner) {
-        console.log('Admin: not admin, showing error');
-        addDebugMessage('check-failed: not admin');
-        updateStatusMessage('Admin access denied for this account.');
-        setIsAdmin(false);
-        finishAuthCheck('You do not have admin access with this account.');
-        return;
-      }
-
-      console.log('Admin: user is admin - saving to cache');
-      addDebugMessage('admin check passed - caching');
-      saveAdminStatusToCache();
-      setIsAdmin(true);
-      setUnauthorizedMessage('');
-      updateStatusMessage('Admin access granted. Fetching platform requests...');
-      finishAuthCheck('', initId);
       await fetchSubmissions(abortController.current.signal);
       await fetchUsers();
-      console.log('Admin: fetchUsers completed');
       updateStatusMessage('Loaded admin data.');
       addDebugMessage('check-completed');
     } catch (err) {
-      if (err.name === 'AbortError') {
-        console.log('Admin: admin check aborted');
-        addDebugMessage('check-aborted');
-        return;
-      }
-      console.error('Admin: Error checking admin status:', err);
-      addDebugMessage(`check-failed: ${err}`);
-      setIsAdmin(false);
-      if (isMounted.current) {
-        finishAuthCheck('Unable to verify admin access. Please try again later.', initId);
-      }
+      console.error('Admin: Error loading admin data:', err);
+      addDebugMessage(`admin data load failed: ${err}`);
+      enableCacheFallback();
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -297,92 +247,20 @@ export default function Admin() {
     }
   };
 
-  const backgroundValidateAdmin = async (user: any, initId: number) => {
-    // Prevent concurrent background validations
-    if (backgroundValidationInProgress.current) {
-      console.log('Admin: background validation already in progress');
+  useEffect(() => {
+    addDebugMessage('admin session check started');
+    updateStatusMessage('Verifying admin access...');
+
+    if (getCachedAdminStatus()) {
+      initializeAdmin();
       return;
     }
 
-    backgroundValidationInProgress.current = true;
-    console.log('Admin: starting background validation');
-    addDebugMessage('background validation started');
-
-    try {
-      if (!user.id) {
-        throw new Error('User missing id');
-      }
-
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        throw error;
-      }
-
-      const normalizedEmail = user.email?.toLowerCase?.() ?? '';
-      const adminOwnerEmails = ['gibsonkobia@gmail.com', 'davidibrown776@gmail.com'];
-      const isOwner = adminOwnerEmails.includes(normalizedEmail);
-
-      if (!profile?.is_admin && !isOwner) {
-        console.log('Admin: background validation failed - user no longer admin');
-        addDebugMessage('background validation failed: not admin');
-        
-        // User is no longer admin - clear cache and redirect silently
-        clearAdminCache();
-        setIsAdmin(false);
-        setUnauthorizedMessage('Your admin access has been revoked.');
-        if (isMounted.current) {
-          setTimeout(() => {
-            if (isMounted.current) {
-              navigate('/login');
-            }
-          }, 2000);
-        }
-        return;
-      }
-
-      console.log('Admin: background validation passed');
-      addDebugMessage('background validation passed');
-      updateStatusMessage('Admin status confirmed.');
-      
-      // Refresh data in background
-      await fetchSubmissions(abortController.current?.signal);
-      await fetchUsers();
-      
-    } catch (err) {
-      console.error('Admin: background validation error:', err);
-      addDebugMessage(`background validation error: ${err}`);
-
-      const status = (err as any)?.status;
-      const message = String(err).toLowerCase();
-      const isAuthError = status === 401 || status === 403 || message.includes('jwt') || message.includes('permission denied');
-
-      if (isAuthError) {
-        console.log('Admin: auth-related background validation failure, clearing cache');
-        clearAdminCache();
-        setIsAdmin(false);
-        setUnauthorizedMessage('Your admin access has been revoked.');
-        if (isMounted.current) {
-          setTimeout(() => {
-            if (isMounted.current) {
-              navigate('/login');
-            }
-          }, 2000);
-        }
-      } else {
-        console.log('Admin: non-auth background validation failure, keeping cache');
-        updateStatusMessage('Background validation unavailable. Using cached data.');
-      }
-    } finally {
-      backgroundValidationInProgress.current = false;
-      console.log('Admin: background validation completed');
-      addDebugMessage('background validation completed');
-    }
-  };
+    setIsAdmin(false);
+    setAdminState('ready');
+    setLoading(false);
+    finishAuthCheck('No active admin session. Please sign in.');
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -396,37 +274,8 @@ export default function Admin() {
     };
   }, []);
 
-  const authTimeout = useRef<number | null>(null);
-
   useEffect(() => {
-    addDebugMessage('auth state changed via context');
-    updateStatusMessage(authLoading ? 'Restoring saved admin session...' : 'Verifying admin access...');
-
-    if (authLoading) {
-      setAdminState('loading-session');
-      return;
-    }
-
-    if (!authUser) {
-      addDebugMessage('no auth user after restore');
-      setIsAdmin(false);
-      setAdminState('ready');
-      finishAuthCheck('No active session. Please sign in.');
-      return;
-    }
-
-    if (adminInitUserId.current === authUser.id) {
-      addDebugMessage('auth user unchanged; skipping duplicate admin init');
-      return;
-    }
-
-    adminInitUserId.current = authUser.id;
-    addDebugMessage(`new auth user detected: ${authUser.email}`);
-    initializeAdmin(authUser);
-  }, [authLoading, authUser]);
-
-  useEffect(() => {
-    if (!authUser || !isAdmin) return;
+    if (!isAdmin) return;
 
     // Replace unstable realtime subscriptions with a single synchronous fetch.
     const fetchAdminData = async () => {
@@ -650,7 +499,7 @@ export default function Admin() {
         }
       }
     };
-  }, [authUser, isAdmin]);
+  }, [isAdmin]);
 
   const fetchSubmissions = async (signal?: AbortSignal) => {
     addDebugMessage('submissions fetch started');
@@ -763,8 +612,63 @@ export default function Admin() {
     }
 
     if (!isAdmin) {
-      console.log('Admin: rendering Connect with error:', unauthorizedMessage);
-      return <Connect externalError={unauthorizedMessage} />;
+      console.log('Admin: rendering admin login with error:', unauthorizedMessage || loginError);
+      return (
+        <div className="mx-auto max-w-2xl rounded-2xl border border-white/10 bg-black/60 p-8">
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-semibold">Admin Login</h1>
+            <p className="mt-2 text-slate-400">Enter the admin username and password to view the dashboard.</p>
+          </div>
+
+          <form onSubmit={handleAdminLogin} className="space-y-5">
+            <div>
+              <label htmlFor="admin-username" className="block text-sm font-medium text-slate-300 mb-2">
+                Username
+              </label>
+              <input
+                id="admin-username"
+                value={loginUsername}
+                onChange={(event) => setLoginUsername(event.target.value)}
+                className="w-full rounded-2xl border border-slate-700 bg-slate-900/90 px-4 py-3 text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+                placeholder="venomous"
+                autoComplete="username"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="admin-password" className="block text-sm font-medium text-slate-300 mb-2">
+                Password
+              </label>
+              <input
+                id="admin-password"
+                type="password"
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
+                className="w-full rounded-2xl border border-slate-700 bg-slate-900/90 px-4 py-3 text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+            </div>
+
+            {(unauthorizedMessage || loginError) && (
+              <div className="rounded-2xl border border-red-500/30 bg-red-950/80 px-4 py-3 text-sm text-red-200">
+                {unauthorizedMessage || loginError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+            >
+              Sign in
+            </button>
+          </form>
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-slate-900/80 p-4 text-sm text-slate-400">
+            <p>Admin access now uses the fixed username and password only.</p>
+          </div>
+        </div>
+      );
     }
 
     if (loading && !hasInitialLoadCompleted) {
