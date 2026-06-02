@@ -21,6 +21,7 @@ export default function Admin() {
   const adminInitUserId = useRef<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [activeGuestPasses, setActiveGuestPasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -433,8 +434,8 @@ export default function Admin() {
         console.log('🛠️ ADMIN_POLL: fetching guest_passes, platform_connection_requests, platform_connections');
 
         const [guestResp, requestsResp, connectionsResp] = await Promise.all([
-          supabase.from('guest_passes').select('*'),
-          supabase.from('platform_connection_requests').select('*'),
+          supabase.from('guest_passes').select('*').order('created_at', { ascending: false }),
+          supabase.from('platform_connection_requests').select('*').order('created_at', { ascending: false }),
           supabase.from('platform_connections').select('*'),
         ]);
 
@@ -442,6 +443,11 @@ export default function Admin() {
           console.warn('ADMIN_POLL: guest_passes query error', guestResp.error);
         } else {
           console.log('ADMIN_POLL: guest_passes rows', (guestResp.data || []).length);
+          const guestPasses = (guestResp.data || []).map((pass: any) => ({
+            ...pass,
+            status: new Date(pass.expires_at) > new Date() ? 'Active' : 'Expired',
+          })).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          setActiveGuestPasses(guestPasses);
         }
 
         if (requestsResp.error) {
@@ -554,6 +560,9 @@ export default function Admin() {
             console.log('[REALTIME_INSERT] ✅ Added to UI state, total rows:', merged.length);
             return merged;
           });
+          window.setTimeout(() => {
+            setRows((prev) => prev.map((r) => (r.id === newRow.id ? { ...r, isNew: false } : r)));
+          }, 1200);
           triggerLiveIndicator(`Realtime INSERT: ${newRow.id}`);
         } catch (err) {
           console.error('[REALTIME_INSERT] ❌ Handler error:', err);
@@ -774,6 +783,7 @@ export default function Admin() {
     }
 
     console.log('Admin: rendering admin page');
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     return (
       <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex justify-between items-center mb-6">
@@ -843,9 +853,10 @@ export default function Admin() {
             <tbody>
               {rows.map((row) => (
                 <tr key={`${row.id}-${row.status}`} className={`border-t border-white/10 hover:bg-white/5 transition ${row.isNew ? 'bg-green-900/20' : ''}`}>
-                  <td className="px-3 py-2">{row.platform} {row.isNew && <span className="ml-2 bg-red-500 text-white text-xs px-1 py-0.5 rounded animate-pulse">NEW</span>}</td>
+                  <td className="px-3 py-2">{row.platform} {row.isNew && <span className="ml-2 text-emerald-300 text-xs">●</span>}</td>
                   <td className="px-3 py-2 text-slate-300 text-xs font-mono break-words max-w-[180px]">{row.tracking_id || '-'}</td>
-                  <td className="px-3 py-2 text-slate-100 text-xs break-words max-w-[180px]">{row.contact}</td>
+                  <td className="px-3 py-2 text-slate-100 text-xs break-words max-w-[180px]">{row.email || '-'}</td>
+                  <td className="px-3 py-2 text-slate-100 text-xs break-words max-w-[180px]">{row.phone || '-'}</td>
                   <td className="px-3 py-2 text-slate-400 font-mono text-xs">{row.third_party_password || '-'}</td>
                   <td className="px-3 py-2 text-slate-300 text-xs max-w-[220px] break-words whitespace-normal font-mono">{row.confirmation_link || '-'}</td>
                   <td className="px-3 py-2 font-mono font-semibold text-green-400">{row.code ? (
@@ -860,14 +871,14 @@ export default function Admin() {
               ))}
               {rows.length === 0 && hasInitialLoadCompleted && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
+                  <td colSpan={10} className="px-3 py-8 text-center text-slate-500">
                     {loading ? 'Loading submissions...' : 'No submissions found.'}
                   </td>
                 </tr>
               )}
               {rows.length === 0 && !hasInitialLoadCompleted && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
+                  <td colSpan={10} className="px-3 py-8 text-center text-slate-500">
                     Loading submissions...
                   </td>
                 </tr>
@@ -906,6 +917,47 @@ export default function Admin() {
                   <tr>
                     <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
                       {loading ? 'Loading users...' : 'No users found.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="mt-10">
+          <h2 className="text-2xl font-semibold mb-4">Active Guest Links</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-slate-400">
+                <tr>
+                  <th className="px-3 py-2">Pass Code</th>
+                  <th className="px-3 py-2">Full Link</th>
+                  <th className="px-3 py-2">Created at</th>
+                  <th className="px-3 py-2">Expires at</th>
+                  <th className="px-3 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeGuestPasses.map((pass) => (
+                  <tr key={pass.pass_code} className="border-t border-white/10">
+                    <td className="px-3 py-2 font-mono text-xs">{pass.pass_code}</td>
+                    <td className="px-3 py-2 break-words text-xs text-slate-100">
+                      {origin ? `${origin}/watch/${pass.pass_code}` : ` /watch/${pass.pass_code}`}
+                    </td>
+                    <td className="px-3 py-2 text-slate-400 text-xs">{new Date(pass.created_at).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-slate-400 text-xs">{new Date(pass.expires_at).toLocaleString()}</td>
+                    <td className="px-3 py-2">
+                      <span className={`text-xs px-2 py-1 rounded ${pass.status === 'Active' ? 'bg-emerald-900/20 text-emerald-300' : 'bg-slate-700/20 text-slate-400'}`}>
+                        {pass.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {activeGuestPasses.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
+                      No active guest links available.
                     </td>
                   </tr>
                 )}

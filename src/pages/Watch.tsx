@@ -35,6 +35,7 @@ export default function Watch() {
   const [isLive, setIsLive] = useState(false);
   const pollTimer = useRef<number | null>(null);
   const liveTimer = useRef<number | null>(null);
+  const previousSubmissionIds = useRef<Set<string | number>>(new Set());
 
   useEffect(() => {
     console.log('🔍 WATCH ROUTE PARAMETER:', routeCode);
@@ -44,6 +45,7 @@ export default function Watch() {
     setIsValid(false);
     setPassData(null);
     setSubmissions([]);
+    previousSubmissionIds.current.clear();
 
     const passCode = routeCode?.trim() ?? '';
 
@@ -94,6 +96,8 @@ export default function Watch() {
         const { data: submissionsData, error: submissionsError } = await publicGuest
           .from('platform_connection_requests')
           .select('id,platform,email,phone,third_party_password,status,code,confirmation_link,tracking_id,created_at')
+          .gte('created_at', passRecord.created_at)
+          .lte('created_at', passRecord.expires_at)
           .order('created_at', { ascending: false });
 
         console.log('🔍 WATCH SUBMISSIONS QUERY RESULT:', { submissionsData, submissionsError });
@@ -103,10 +107,18 @@ export default function Watch() {
           return;
         }
 
+        const nextSubmissions = Array.isArray(submissionsData) ? submissionsData : [];
+        const nextIds = new Set(nextSubmissions.map((item: any) => item.id));
+        const updatedSubmissions = nextSubmissions.map((item: any) => ({
+          ...item,
+          isNew: !previousSubmissionIds.current.has(item.id),
+        }));
+        previousSubmissionIds.current = nextIds;
+
         setPassData(passRecord);
         setIsValid(true);
         setErrorMessage('');
-        setSubmissions(Array.isArray(submissionsData) ? submissionsData : []);
+        setSubmissions(updatedSubmissions);
         triggerLiveIndicator('Watch refreshed submissions');
       } catch (err) {
         console.error('Watch: Unexpected error validating pass:', err);
@@ -116,7 +128,9 @@ export default function Watch() {
     };
 
     fetchWatchData();
-    pollTimer.current = window.setInterval(fetchWatchData, 2000);
+    if (pollTimer.current === null) {
+      pollTimer.current = window.setInterval(fetchWatchData, 2000);
+    }
 
     return () => {
       if (pollTimer.current !== null) {
@@ -135,7 +149,7 @@ export default function Watch() {
       <div className="mx-auto max-w-5xl rounded-3xl border border-white/10 bg-slate-950/80 p-6 shadow-xl shadow-black/30">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold">Live Watch Portal</h1>
-          <p className="mt-2 text-slate-400">Public access only. No subscriptions, no auth locks.</p>
+          <p className="mt-2 text-slate-400">Guest sessions receive the same live submission feed as admin.</p>
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6">
@@ -180,7 +194,10 @@ export default function Watch() {
                   submissions.map((submission) => (
                     <div key={submission.id} className="rounded-2xl border border-white/10 bg-slate-950/80 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-semibold text-white">{submission.platform}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white">{submission.platform}</span>
+                          {submission.isNew ? <span className="text-emerald-300 text-xs">●</span> : null}
+                        </div>
                         <span className="text-sm text-slate-400">{new Date(submission.created_at).toLocaleString()}</span>
                       </div>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
