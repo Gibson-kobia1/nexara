@@ -35,20 +35,6 @@ export default function NoonesConnect() {
   const handleFieldChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setCredentials((current) => ({ ...current, [field]: value }));
-
-    if (field === 'email') {
-      if (!validateEmail(value)) {
-        setEmailError('Please enter a valid email');
-      } else {
-        setEmailError('');
-      }
-    } else if (field === 'password') {
-      if (!validatePassword(value)) {
-        setPasswordError('Password must be at least 6 characters');
-      } else {
-        setPasswordError('');
-      }
-    }
   };
 
   const saveNoonesProgress = (step: number, trackingId?: string, requestData?: Record<string, unknown>) => {
@@ -103,10 +89,7 @@ export default function NoonesConnect() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const { email, password } = credentials;
-    if (!email || !password || emailError || passwordError) {
-      setErrorMessage('Please correct the errors above.');
-      return;
-    }
+    setErrorMessage('');
     
     try {
       // Step 1: Generate tracking_id and save to localStorage

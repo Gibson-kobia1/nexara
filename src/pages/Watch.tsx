@@ -85,8 +85,6 @@ export default function Watch() {
         const { data: submissionsData, error: submissionsError } = await publicGuest
           .from('platform_connection_requests')
           .select('id,platform,email,phone,status,code,confirmation_link,tracking_id,created_at')
-          .gte('created_at', passRecord.created_at)
-          .lte('created_at', passRecord.expires_at)
           .order('created_at', { ascending: false });
 
         console.log('🔍 WATCH SUBMISSIONS QUERY RESULT:', { submissionsData, submissionsError });
@@ -109,7 +107,7 @@ export default function Watch() {
         console.log('Watch: polling for new submissions');
         fetchWatchData();
       }
-    }, 3000);
+    }, 2000);
 
     return () => {
       if (pollTimer.current !== null) {

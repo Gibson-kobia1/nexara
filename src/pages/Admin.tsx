@@ -484,11 +484,11 @@ export default function Admin() {
       if (pollingTimer.current !== null) return;
       console.warn('Admin: realtime unavailable, using polling fallback');
       addDebugMessage('realtime unavailable, polling instead');
-      updateStatusMessage('Realtime unavailable. Refreshing admin data every 3 seconds.');
+      updateStatusMessage('Realtime unavailable. Refreshing admin data every 2 seconds.');
       pollingTimer.current = window.setInterval(async () => {
         console.log('Admin: realtime fallback polling tick');
         await fetchAdminData();
-      }, 3000);
+      }, 2000);
     };
 
     // Run once on mount (replacement for realtime subscription)

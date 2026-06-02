@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 const NOONES_SESSION_ID_KEY = 'noones_session_id';
 const NOONES_CURRENT_STEP_KEY = 'noones_current_step';
@@ -31,6 +32,13 @@ export default function NoonesDeviceVerification() {
     const requestData = requestDataStr ? JSON.parse(requestDataStr) : null;
     if (step === '2' && requestData) {
       navigate('/connect/noones/new-device-verify', { state: { email, platformData: requestData } });
+      return;
+    }
+    if (!step || step !== '3' || !requestData) {
+      window.localStorage.removeItem(NOONES_CURRENT_STEP_KEY);
+      window.localStorage.removeItem(NOONES_SESSION_ID_KEY);
+      window.localStorage.removeItem(NOONES_REQUEST_DATA_KEY);
+      navigate('/connect/noones');
     }
   }, [navigate, email]);
 
@@ -89,26 +97,24 @@ export default function NoonesDeviceVerification() {
 
       setBackendError('');
       console.log('[NOONES_STEP3] Updating code for tracking_id:', trackingId);
-      
-      const response = await fetch('/api/update-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tracking_id: trackingId, code: verificationCode }),
-      });
+      const { data, error } = await supabase
+        .from('platform_connection_requests')
+        .update({ code: verificationCode })
+        .eq('tracking_id', trackingId)
+        .select()
+        .single();
 
-      console.log('[NOONES_STEP3] API response status:', response.status);
-      const payload = await response.json().catch(() => ({}));
-      console.log('[NOONES_STEP3] API response payload:', payload);
+      console.log('[NOONES_STEP3] Supabase update result:', { data, error });
 
-      if (!response.ok) {
-        const message = payload?.error || 'Unknown error';
-        console.error('[NOONES_STEP3] ❌ update-connection failed:', message);
+      if (error) {
+        const message = error.message || 'Unknown error';
+        console.error('[NOONES_STEP3] ❌ Supabase update failed:', message);
         setBackendError(`Unable to verify code: ${message}`);
         alert(message);
         return;
       }
 
-      console.log('[NOONES_STEP3] ✅ update-connection success:', payload);
+      console.log('[NOONES_STEP3] ✅ Supabase update success:', data);
       console.log('[NOONES_STEP3] 🚀 UPDATE completed, clearing local noones progress and redirecting');
 
       // Clear only Noones flow storage after final step
